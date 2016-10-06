@@ -12,8 +12,9 @@ MeshLoader::MeshLoader() { }
 std::vector<MeshPtr> MeshLoader::getMesh(const std::string &path) {
     Assimp::Importer importer;
 
-    //const uint flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices;
+//    const uint flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices;
     const uint flags = aiProcess_Triangulate;
+//    const uint flags = aiProcess_Triangulate | aiProcess_OptimizeGraph;
 
     const aiScene* scene = importer.ReadFile(path, flags);
 

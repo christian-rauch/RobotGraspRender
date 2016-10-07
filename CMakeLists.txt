@@ -18,9 +18,11 @@ include_directories(${assimp_INCLUDE_DIRS})
 include_directories(src)
 
 # sources for renderer
-set(SRC_LIST ./src/MeshLoader.cpp)
+set(SRC_LIST ./src/MeshLoader.cpp
+             ./src/Mesh.cpp)
 
-set(HDR_LIST ./src/MeshLoader.hpp)
+set(HDR_LIST ./src/MeshLoader.hpp
+             ./src/Mesh.hpp)
 
 add_library(meshloader ${SRC_LIST})
 target_link_libraries(meshloader ${assimp_LIBRARIES})

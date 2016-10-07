@@ -2,9 +2,9 @@
 
 // Input vertex data, different for all executions of this shader.
 layout(location = 0) in vec3 vertexPosition_modelspace;
-//layout(location = 4) in vec2 vertexUV;
+layout(location = 4) in vec2 vertexUV;
 //layout(location = 3) in vec2 vertexUV;
-layout(location = 0) in vec2 vertexUV;
+//layout(location = 0) in vec2 vertexUV;
 
 // Output data ; will be interpolated for each fragment.
 out vec2 UV;

@@ -59,9 +59,10 @@ void getMesh(const aiScene* const scene, const aiNode* const node,
                 }
 
                 // texture coordiantes
+                // we need to flip the image vertically (y-axis)
                 if(mesh->mTextureCoords[0]!=NULL) {
                     obj_mesh.uv.push_back({mesh->mTextureCoords[0][v].x,
-                                                mesh->mTextureCoords[0][v].y});
+                                                1-mesh->mTextureCoords[0][v].y});
                 }
             }
 

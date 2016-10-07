@@ -172,13 +172,30 @@ int main(int argc, char *argv[]) {
 //        pangolin::RenderVbo(vertexbuffer, GL_TRIANGLES);
 //        pangolin::RenderVbo(vertexbuffer, GL_TRIANGLE_STRIP);
 //        pangolin::RenderVbo(vertexbuffer, GL_POINTS);
-
+//        glEnableVertexAttribArray(0);
         vertexbuffer.Bind();
         glVertexPointer(vertexbuffer.count_per_element, vertexbuffer.datatype, 0, 0);
         glEnableClientState(GL_VERTEX_ARRAY);
 
         elementbuffer.Bind();
+
+        // draw texture
+        uvbuffer.Bind();
+        glEnableVertexAttribArray(uvbuffer.bo);
+        glVertexAttribPointer(
+            uvbuffer.bo,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+            2,                                // size : U+V => 2
+            GL_FLOAT,                         // type
+            GL_FALSE,                         // normalized?
+            0,                                // stride
+            (void*)0                          // array buffer offset
+        );
+
         glDrawElements(GL_TRIANGLES, elementbuffer.num_elements*elementbuffer.count_per_element, elementbuffer.datatype, 0);
+
+        glDisableVertexAttribArray(uvbuffer.bo);
+        uvbuffer.Unbind();
+
         elementbuffer.Unbind();
 
         glDisableClientState(GL_VERTEX_ARRAY);

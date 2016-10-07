@@ -14,6 +14,18 @@ include_directories(${Pangolin_INCLUDE_DIRS})
 pkg_check_modules(assimp REQUIRED assimp)
 include_directories(${assimp_INCLUDE_DIRS})
 
+# KDL
+pkg_check_modules(orocos_kdl REQUIRED orocos_kdl)
+include_directories(${orocos_kdl_INCLUDE_DIRS})
+
+# URDF
+find_package(urdfdom REQUIRED)
+include_directories(${urdfdom_INCLUDE_DIRS})
+
+# Boost filesystem
+find_package(Boost REQUIRED filesystem system)
+include_directories(${Boost_INCLUDE_DIRS})
+
 # project headers
 include_directories(src)
 
@@ -24,10 +36,28 @@ set(SRC_LIST ./src/MeshLoader.cpp
 set(HDR_LIST ./src/MeshLoader.hpp
              ./src/Mesh.hpp)
 
+# loading meshes
 add_library(meshloader ${SRC_LIST})
 target_link_libraries(meshloader ${assimp_LIBRARIES})
+
+# parser for generating KDL tree from URDF
+add_library(kdl_parser src/kdl_parser.cpp)
+
+# represenation of articulated robot model
+add_library(robot_model src/RobotModel.cpp)
+target_link_libraries(robot_model orocos-kdl)
+target_link_libraries(robot_model ${urdfdom_LIBRARIES})
+target_link_libraries(robot_model kdl_parser)
+target_link_libraries(robot_model ${Boost_LIBRARIES})
+
 
 # define executable
 add_executable(${PROJECT_NAME} ./src/RobotGraspRender.cpp)
 target_link_libraries(${PROJECT_NAME} ${Pangolin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} meshloader)
+target_link_libraries(${PROJECT_NAME} robot_model)
+
+get_cmake_property(_variableNames VARIABLES)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach()

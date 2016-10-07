@@ -2,14 +2,17 @@
 
 #include <MeshLoader.hpp>
 
+#include <RobotModel.hpp>
+
 int main(int argc, char *argv[]) {
 
     pangolin::ParseVarsFile(argv[1]);
 
     pangolin::Var<std::string> env_path("environment_mesh");
     pangolin::Var<std::string> obj_path("object_mesh");
-    pangolin::Var<std::string> rob_path("robot_mesh");
+    pangolin::Var<std::string> robot_model_path("robot_model");
 
+    std::cout<<"robot: "<<robot_model_path<<std::endl;
     std::cout<<"environment: "<<env_path<<std::endl;
     std::cout<<"object: "<<obj_path<<std::endl;
 
@@ -47,9 +50,16 @@ int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////////////////
     /// Load Resources
 
+    RobotModel robot;
+    if(!robot_model_path->empty()) {
+        robot.parseURDF(robot_model_path);
+        robot.loadLinkMeshes();
+    }
+
+    // meshes
     MeshPtr env;
     if(env_path->empty()) {
-        env = std::unique_ptr<Mesh>();
+        env = std::unique_ptr<Mesh>(new Mesh());
     }
     else {
         env = MeshLoader::getMesh(env_path);
@@ -57,18 +67,10 @@ int main(int argc, char *argv[]) {
 
     MeshPtr obj;
     if(obj_path->empty()) {
-        obj = std::unique_ptr<Mesh>();
+        obj = std::unique_ptr<Mesh>(new Mesh());
     }
     else {
         obj = MeshLoader::getMesh(obj_path);
-    }
-
-    MeshPtr rob;
-    if(rob_path->empty()) {
-        rob = std::unique_ptr<Mesh>();
-    }
-    else {
-        rob = MeshLoader::getMesh(rob_path);
     }
 
 //    std::cout<<"verts: "<<obj->vertices.rows()<<std::endl;
@@ -115,7 +117,9 @@ int main(int argc, char *argv[]) {
 
     env->renderSetup();
     obj->renderSetup();
-    rob->renderSetup();
+
+//    robot.link_meshes["hokuyo_link"]->renderSetup();
+    robot.renderSetup();
 
 
 
@@ -233,7 +237,9 @@ int main(int argc, char *argv[]) {
         //obj->render(texture_shader);
         env->render(prog);
         obj->render(prog);
-        rob->render(texture_shader);
+
+//        robot.link_meshes["hokuyo_link"]->render(texture_shader);
+        robot.render(texture_shader);
 
 //        texture_shader.Unbind();
 

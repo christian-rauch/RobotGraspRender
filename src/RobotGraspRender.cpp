@@ -38,54 +38,73 @@ int main(int argc, char *argv[]) {
     prog.AddShaderFromFile(pangolin::GlSlFragmentShader, "SimpleFragmentShader.frag");
     prog.Link();
 
+    pangolin::GlSlProgram texture_shader;
+    texture_shader.AddShaderFromFile(pangolin::GlSlVertexShader, "TextureVertexShader.vert");
+    texture_shader.AddShaderFromFile(pangolin::GlSlFragmentShader, "TextureFragmentShader.frag");
+    texture_shader.Link();
+
     ////////////////////////////////////////////////////////////////////////////
     /// Load Resources
 
-    std::vector<MeshPtr> env;
+    MeshPtr env;
     if(env_path->empty()) {
-        env.push_back(std::make_shared<Mesh>(0,0));
+        env = std::make_shared<Mesh>();
     }
     else {
         env = MeshLoader::getMesh(env_path);
     }
 
-    std::vector<MeshPtr> obj;
+    MeshPtr obj;
     if(obj_path->empty()) {
-        obj.push_back(std::make_shared<Mesh>(0,0));
+        obj = std::make_shared<Mesh>();
     }
     else {
         obj = MeshLoader::getMesh(obj_path);
     }
 
-    std::cout<<"verts: "<<obj[0]->vertices.rows()<<std::endl;
-    std::cout<<"faces: "<<obj[0]->faces.rows()<<std::endl;
+//    std::cout<<"verts: "<<obj->vertices.rows()<<std::endl;
+//    std::cout<<"faces: "<<obj->faces.rows()<<std::endl;
 
-    pangolin::GlBuffer vertexbuffer(pangolin::GlArrayBuffer, obj[0]->vertices.rows(), GL_FLOAT, 3, GL_STATIC_DRAW);
-    vertexbuffer.Upload(obj[0]->vertices.data(), sizeof(float)*obj[0]->vertices.size());
+    std::cout<<"verts: "<<obj->vertices.size()<<std::endl;
+    std::cout<<"faces: "<<obj->faces.size()<<std::endl;
 
-//    pangolin::GlBuffer elementbuffer(pangolin::GlElementArrayBuffer, obj[0]->faces.rows(), GL_UNSIGNED_INT, 3, GL_STATIC_DRAW);
-//    elementbuffer.Upload(obj[0]->faces.data(), sizeof(GLuint)*obj[0]->faces.size());
+    pangolin::GlBuffer vertexbuffer(pangolin::GlArrayBuffer, obj->vertices.size(), GL_FLOAT, 3, GL_STATIC_DRAW);
+    vertexbuffer.Upload(obj->vertices.data(), sizeof(float)*obj->vertices.size()*3);
 
-    pangolin::GlBuffer colourbuffer(pangolin::GlArrayBuffer, obj[0]->colour.rows(), GL_FLOAT, 3, GL_STATIC_DRAW);
-    colourbuffer.Upload(obj[0]->colour.data(), sizeof(float)*obj[0]->colour.size());
+    pangolin::GlBuffer elementbuffer(pangolin::GlElementArrayBuffer, obj->faces.size(), GL_UNSIGNED_INT, 3, GL_STATIC_DRAW);
+    elementbuffer.Upload(obj->faces.data(), sizeof(uint)*obj->faces.size()*3);
 
-    // each vertex
+    pangolin::GlBuffer colourbuffer(pangolin::GlArrayBuffer, obj->colour.size(), GL_FLOAT, 3, GL_STATIC_DRAW);
+    colourbuffer.Upload(obj->colour.data(), sizeof(float)*obj->colour.size()*3);
+
+    pangolin::GlBuffer uvbuffer(pangolin::GlArrayBuffer, obj->uv.size(), GL_FLOAT, 2, GL_STATIC_DRAW);
+    uvbuffer.Upload(obj->uv.data(), sizeof(float)*obj->uv.size()*2);
+
+    pangolin::GlTexture texture;
+    if(obj->texture.SizeBytes()>0) {
+        texture.Load(obj->texture);
+        texture.SetLinear();
+    }
+
 //    GLuint vertexbuffer;
 //    glGenBuffers(1, &vertexbuffer);
 //    glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-//    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*obj[0]->vertices.size(), obj[0]->getVertices(), GL_STATIC_DRAW);
-
-//    // draw faces
+//    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*obj->vertices.size()*3, obj->vertices.data(), GL_STATIC_DRAW);
 //    GLuint elementbuffer;
 //    glGenBuffers(1, &elementbuffer);
 //    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
-//    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint)*obj[0]->faces.size(), obj[0]->getFaces(), GL_STATIC_DRAW);
-
-//    // colour
+//    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint)*obj->faces.size()*3, obj->faces.data(), GL_STATIC_DRAW);
 //    GLuint colorbuffer;
 //    glGenBuffers(1, &colorbuffer);
 //    glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
-//    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*obj[0]->colour.size(), obj[0]->colour.data(), GL_STATIC_DRAW);
+//    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*obj->colour.size()*3, obj->colour.data(), GL_STATIC_DRAW);
+
+//    GLuint uvbuffer;
+//    glGenBuffers(1, &uvbuffer);
+//    glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+//    glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
+
+
 
     ////////////////////////////////////////////////////////////////////////////
     /// Draw
@@ -94,21 +113,24 @@ int main(int argc, char *argv[]) {
         // clear buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-
         d_cam.Activate(s_cam);
 
 //        pangolin::glDrawColouredCube();
         pangolin::glDrawAxis(1);
 
-        prog.Bind();
+//        prog.Bind();
+        texture_shader.Bind();
         // update the vertex positions based on our camera view
-        prog.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
-//        prog.SetUniform("vertexColor", obj[0]->colour.data());
+//        prog.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
+        texture_shader.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
+//        texture_shader.GetUniformHandle("UV");
+//        GLuint TextureID = texture_shader.GetUniformHandle("myTextureSampler");
+//        glActiveTexture(GL_TEXTURE0);
+//        glUniform1i(TextureID, 0);
+//        texture_shader.SetUniform("myTextureSampler", texture.tid);
 
-        // draw vertices
+         //draw vertices
 //        glEnableVertexAttribArray(0);
-
 //        glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 //        glVertexAttribPointer(
 //           0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
@@ -119,10 +141,8 @@ int main(int argc, char *argv[]) {
 //           (void*)0            // array buffer offset
 //        );
 
-        // draw faces
 //        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
 
-        // colour
 //        glEnableVertexAttribArray(1);
 //        glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
 //        glVertexAttribPointer(
@@ -134,11 +154,11 @@ int main(int argc, char *argv[]) {
 //            (void*)0                          // array buffer offset
 //        );
 
-//        glDrawArrays(GL_TRIANGLES, 0, obj[0]->faces.size());
+////        glDrawArrays(GL_TRIANGLES, 0, obj->faces.size());
 
 //        glDrawElements(
 //            GL_TRIANGLES,      // mode
-//            obj[0]->faces.size(), // count
+//            obj->faces.size()*3, // count
 //            GL_UNSIGNED_INT,   // type
 //            (void*)0           // element array buffer offset
 //        );
@@ -146,16 +166,34 @@ int main(int argc, char *argv[]) {
 //        glDisableVertexAttribArray(0);
 //        glDisableVertexAttribArray(1);
 
+        texture.Bind();
 
 
-        //pangolin::RenderVbo(vertexbuffer, GL_TRIANGLES);
-        //pangolin::RenderVbo(vertexbuffer, GL_POINTS);
-        //pangolin::RenderVboIbo(vertexbuffer, elementbuffer, true);
-        //pangolin::RenderVboIboCbo(vertexbuffer, elementbuffer, colourbuffer, true, true);
+//        pangolin::RenderVbo(vertexbuffer, GL_TRIANGLES);
+//        pangolin::RenderVbo(vertexbuffer, GL_TRIANGLE_STRIP);
+//        pangolin::RenderVbo(vertexbuffer, GL_POINTS);
 
-        pangolin::RenderVboCbo(vertexbuffer, colourbuffer, true, GL_TRIANGLES);
+        vertexbuffer.Bind();
+        glVertexPointer(vertexbuffer.count_per_element, vertexbuffer.datatype, 0, 0);
+        glEnableClientState(GL_VERTEX_ARRAY);
 
-        prog.Unbind();
+        elementbuffer.Bind();
+        glDrawElements(GL_TRIANGLES, elementbuffer.num_elements*elementbuffer.count_per_element, elementbuffer.datatype, 0);
+        elementbuffer.Unbind();
+
+        glDisableClientState(GL_VERTEX_ARRAY);
+        vertexbuffer.Unbind();
+
+
+//        pangolin::RenderVboIbo(vertexbuffer, elementbuffer, true);
+//        pangolin::RenderVboIboCbo(vertexbuffer, elementbuffer, colourbuffer, true, obj->hasColour());
+
+//        pangolin::RenderVboCbo(vertexbuffer, colourbuffer, true);
+
+        texture.Unbind();
+
+        //prog.Unbind();
+        texture_shader.Unbind();
 
         // draw
         pangolin::FinishFrame();

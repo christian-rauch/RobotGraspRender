@@ -6,41 +6,43 @@
 #include <array>
 #include <memory>
 
-#include <Eigen/Core>
+#include <pangolin/image/image_io.h>
 
-typedef Eigen::Matrix<float, Eigen::Dynamic, 3, Eigen::RowMajor> Point3DList;
-typedef Eigen::Matrix<float, Eigen::Dynamic, 2, Eigen::RowMajor> Point2DList;
-typedef Eigen::Matrix<uint, Eigen::Dynamic, 3, Eigen::RowMajor> Index3DList;
+//#include <Eigen/Core>
 
-class Mesh {
-public:
+//typedef Eigen::Matrix<float, Eigen::Dynamic, 3, Eigen::RowMajor> Point3DList;
+//typedef Eigen::Matrix<float, Eigen::Dynamic, 2, Eigen::RowMajor> Point2DList;
+//typedef Eigen::Matrix<uint, Eigen::Dynamic, 3, Eigen::RowMajor> Index3DList;
+
+typedef std::vector< std::array<float, 3> > Point3DList;
+typedef std::vector< std::array<float, 2> > Point2DList;
+typedef std::vector< std::array<uint, 3> > Index3DList;
+
+struct Mesh {
     Point3DList vertices;
     Point3DList normals;
-    Point2DList texture;
+    Point2DList uv;     // U,V coordinates
     Point3DList colour; // r, g, b, no alpha
     Index3DList faces;
 
-    Mesh(const uint nVerts, const uint nFaces) {
-        vertices.resize(nVerts, 3);
-        normals.resize(nVerts, 3);
-        texture.resize(nVerts, 2);
-        colour.resize(nVerts, 3);
-        faces.resize(nFaces, 3);
-    }
+    std::string directory;
 
-    const float *getVertices() const { return vertices.data(); }
+    pangolin::TypedImage texture; // only a single material for the whole scene for now
 
-    const uint *getFaces() const { return faces.data(); }
+    bool hasFaces() { return faces.size()!=0; }
+
+    bool hasColour() { return colour.size()!=0; }
+
+    bool hasTexture() { return uv.size()!=0; }
 };
 
 typedef std::shared_ptr<Mesh> MeshPtr;
 
-class MeshLoader {
-public:
-    MeshLoader();
+namespace MeshLoader {
 
-    static std::vector<MeshPtr> getMesh(const std::string &path);
-};
+MeshPtr getMesh(const std::string &path);
+
+}
 
 
 #endif // MESHLOADER_HPP

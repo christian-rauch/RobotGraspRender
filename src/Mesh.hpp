@@ -5,12 +5,17 @@
 #include <array>
 
 #include <pangolin/image/image_io.h>
+#include <pangolin/gl/gl.hpp>
+#include <pangolin/gl/glsl.h>
 
 typedef std::vector< std::array<float, 3> > Point3DList;
 typedef std::vector< std::array<float, 2> > Point2DList;
 typedef std::vector< std::array<uint, 3> > Index3DList;
 
-struct Mesh {
+class Mesh {
+public:
+    Mesh();
+
     Point3DList vertices;
     Point3DList normals;
     Point2DList uv;     // U,V coordinates
@@ -27,7 +32,15 @@ struct Mesh {
 
     bool hasTexture() { return uv.size()!=0; }
 
-    void renderMeshTexture();
+    pangolin::GlBuffer vertexbuffer;
+    pangolin::GlBuffer elementbuffer;
+    pangolin::GlBuffer colourbuffer;
+    pangolin::GlBuffer uvbuffer;
+    pangolin::GlTexture gl_texture;
+
+    void renderSetup();
+
+    void render(pangolin::GlSlProgram &shader);
 };
 
 #endif // MESH_H

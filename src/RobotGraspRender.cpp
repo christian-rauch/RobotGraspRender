@@ -8,6 +8,7 @@ int main(int argc, char *argv[]) {
 
     pangolin::Var<std::string> env_path("environment_mesh");
     pangolin::Var<std::string> obj_path("object_mesh");
+    pangolin::Var<std::string> rob_path("robot_mesh");
 
     std::cout<<"environment: "<<env_path<<std::endl;
     std::cout<<"object: "<<obj_path<<std::endl;
@@ -48,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     MeshPtr env;
     if(env_path->empty()) {
-        env = std::make_shared<Mesh>();
+        env = std::unique_ptr<Mesh>();
     }
     else {
         env = MeshLoader::getMesh(env_path);
@@ -56,10 +57,18 @@ int main(int argc, char *argv[]) {
 
     MeshPtr obj;
     if(obj_path->empty()) {
-        obj = std::make_shared<Mesh>();
+        obj = std::unique_ptr<Mesh>();
     }
     else {
         obj = MeshLoader::getMesh(obj_path);
+    }
+
+    MeshPtr rob;
+    if(rob_path->empty()) {
+        rob = std::unique_ptr<Mesh>();
+    }
+    else {
+        rob = MeshLoader::getMesh(rob_path);
     }
 
 //    std::cout<<"verts: "<<obj->vertices.rows()<<std::endl;
@@ -68,23 +77,23 @@ int main(int argc, char *argv[]) {
     std::cout<<"verts: "<<obj->vertices.size()<<std::endl;
     std::cout<<"faces: "<<obj->faces.size()<<std::endl;
 
-    pangolin::GlBuffer vertexbuffer(pangolin::GlArrayBuffer, obj->vertices.size(), GL_FLOAT, 3, GL_STATIC_DRAW);
-    vertexbuffer.Upload(obj->vertices.data(), sizeof(float)*obj->vertices.size()*3);
+//    pangolin::GlBuffer vertexbuffer(pangolin::GlArrayBuffer, obj->vertices.size(), GL_FLOAT, 3, GL_STATIC_DRAW);
+//    vertexbuffer.Upload(obj->vertices.data(), sizeof(float)*obj->vertices.size()*3);
 
-    pangolin::GlBuffer elementbuffer(pangolin::GlElementArrayBuffer, obj->faces.size(), GL_UNSIGNED_INT, 3, GL_STATIC_DRAW);
-    elementbuffer.Upload(obj->faces.data(), sizeof(uint)*obj->faces.size()*3);
+//    pangolin::GlBuffer elementbuffer(pangolin::GlElementArrayBuffer, obj->faces.size(), GL_UNSIGNED_INT, 3, GL_STATIC_DRAW);
+//    elementbuffer.Upload(obj->faces.data(), sizeof(uint)*obj->faces.size()*3);
 
-    pangolin::GlBuffer colourbuffer(pangolin::GlArrayBuffer, obj->colour.size(), GL_FLOAT, 3, GL_STATIC_DRAW);
-    colourbuffer.Upload(obj->colour.data(), sizeof(float)*obj->colour.size()*3);
+//    pangolin::GlBuffer colourbuffer(pangolin::GlArrayBuffer, obj->colour.size(), GL_FLOAT, 3, GL_STATIC_DRAW);
+//    colourbuffer.Upload(obj->colour.data(), sizeof(float)*obj->colour.size()*3);
 
-    pangolin::GlBuffer uvbuffer(pangolin::GlArrayBuffer, obj->uv.size(), GL_FLOAT, 2, GL_STATIC_DRAW);
-    uvbuffer.Upload(obj->uv.data(), sizeof(float)*obj->uv.size()*2);
+//    pangolin::GlBuffer uvbuffer(pangolin::GlArrayBuffer, obj->uv.size(), GL_FLOAT, 2, GL_STATIC_DRAW);
+//    uvbuffer.Upload(obj->uv.data(), sizeof(float)*obj->uv.size()*2);
 
-    pangolin::GlTexture texture;
-    if(obj->texture.SizeBytes()>0) {
-        texture.Load(obj->texture);
-        texture.SetLinear();
-    }
+//    pangolin::GlTexture texture;
+//    if(obj->texture.SizeBytes()>0) {
+//        texture.Load(obj->texture);
+//        texture.SetLinear();
+//    }
 
 //    GLuint vertexbuffer;
 //    glGenBuffers(1, &vertexbuffer);
@@ -104,6 +113,10 @@ int main(int argc, char *argv[]) {
 //    glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 //    glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
 
+    env->renderSetup();
+    obj->renderSetup();
+    rob->renderSetup();
+
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -119,10 +132,16 @@ int main(int argc, char *argv[]) {
         pangolin::glDrawAxis(1);
 
 //        prog.Bind();
+        prog.Bind();
+        prog.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
+        prog.Unbind();
         texture_shader.Bind();
+        texture_shader.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
+        texture_shader.Unbind();
+//        texture_shader.Bind();
         // update the vertex positions based on our camera view
 //        prog.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
-        texture_shader.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
+//        texture_shader.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
 //        texture_shader.GetUniformHandle("UV");
 //        GLuint TextureID = texture_shader.GetUniformHandle("myTextureSampler");
 //        glActiveTexture(GL_TEXTURE0);
@@ -166,51 +185,57 @@ int main(int argc, char *argv[]) {
 //        glDisableVertexAttribArray(0);
 //        glDisableVertexAttribArray(1);
 
-        texture.Bind();
+//        texture.Bind();
 
 
-//        pangolin::RenderVbo(vertexbuffer, GL_TRIANGLES);
-//        pangolin::RenderVbo(vertexbuffer, GL_TRIANGLE_STRIP);
-//        pangolin::RenderVbo(vertexbuffer, GL_POINTS);
-//        glEnableVertexAttribArray(0);
-        vertexbuffer.Bind();
-        glVertexPointer(vertexbuffer.count_per_element, vertexbuffer.datatype, 0, 0);
-        glEnableClientState(GL_VERTEX_ARRAY);
+////        pangolin::RenderVbo(vertexbuffer, GL_TRIANGLES);
+////        pangolin::RenderVbo(vertexbuffer, GL_TRIANGLE_STRIP);
+////        pangolin::RenderVbo(vertexbuffer, GL_POINTS);
+////        glEnableVertexAttribArray(0);
+//        vertexbuffer.Bind();
+//        glVertexPointer(vertexbuffer.count_per_element, vertexbuffer.datatype, 0, 0);
+//        glEnableClientState(GL_VERTEX_ARRAY);
 
-        elementbuffer.Bind();
+//        elementbuffer.Bind();
 
-        // draw texture
-        uvbuffer.Bind();
-        glEnableVertexAttribArray(uvbuffer.bo);
-        glVertexAttribPointer(
-            uvbuffer.bo,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-            2,                                // size : U+V => 2
-            GL_FLOAT,                         // type
-            GL_FALSE,                         // normalized?
-            0,                                // stride
-            (void*)0                          // array buffer offset
-        );
+//        // draw texture
+//        uvbuffer.Bind();
+//        glEnableVertexAttribArray(uvbuffer.bo);
+//        glVertexAttribPointer(
+//            uvbuffer.bo,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+//            2,                                // size : U+V => 2
+//            GL_FLOAT,                         // type
+//            GL_FALSE,                         // normalized?
+//            0,                                // stride
+//            (void*)0                          // array buffer offset
+//        );
 
-        glDrawElements(GL_TRIANGLES, elementbuffer.num_elements*elementbuffer.count_per_element, elementbuffer.datatype, 0);
+//        glDrawElements(GL_TRIANGLES, elementbuffer.num_elements*elementbuffer.count_per_element, elementbuffer.datatype, 0);
 
-        glDisableVertexAttribArray(uvbuffer.bo);
-        uvbuffer.Unbind();
+//        glDisableVertexAttribArray(uvbuffer.bo);
+//        uvbuffer.Unbind();
 
-        elementbuffer.Unbind();
+//        elementbuffer.Unbind();
 
-        glDisableClientState(GL_VERTEX_ARRAY);
-        vertexbuffer.Unbind();
+//        glDisableClientState(GL_VERTEX_ARRAY);
+//        vertexbuffer.Unbind();
 
 
-//        pangolin::RenderVboIbo(vertexbuffer, elementbuffer, true);
-//        pangolin::RenderVboIboCbo(vertexbuffer, elementbuffer, colourbuffer, true, obj->hasColour());
+////        pangolin::RenderVboIbo(vertexbuffer, elementbuffer, true);
+////        pangolin::RenderVboIboCbo(vertexbuffer, elementbuffer, colourbuffer, true, obj->hasColour());
 
-//        pangolin::RenderVboCbo(vertexbuffer, colourbuffer, true);
+////        pangolin::RenderVboCbo(vertexbuffer, colourbuffer, true);
 
-        texture.Unbind();
+//        texture.Unbind();
 
-        //prog.Unbind();
-        texture_shader.Unbind();
+//        //prog.Unbind();
+
+        //obj->render(texture_shader);
+        env->render(prog);
+        obj->render(prog);
+        rob->render(texture_shader);
+
+//        texture_shader.Unbind();
 
         // draw
         pangolin::FinishFrame();

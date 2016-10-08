@@ -3,6 +3,7 @@
 
 #include <urdf_model/model.h>
 #include <kdl/tree.hpp>
+#include <kdl/jntarray.hpp>
 
 #include "Mesh.hpp"
 #include "MeshLoader.hpp"
@@ -14,7 +15,11 @@ private:
     ModelInterfacePrt urdf_model;
     KDL::Tree robot_tree;
 
+    std::string root_frame;
+
     std::string mesh_package_path;
+
+    KDL::JntArray joints;   // current joint positions
 
 public:
     RobotModel() { }

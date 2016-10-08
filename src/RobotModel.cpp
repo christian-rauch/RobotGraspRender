@@ -5,6 +5,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include <kdl/chainfksolverpos_recursive.hpp>
+
 #define PACKAGE_PATH_URI_SCHEME "package://"
 
 // find the file "package.xml" for obtaining the root folder of our mesh
@@ -41,6 +43,7 @@ void RobotModel::parseURDF(const std::string &urdf_path) {
     urdf_model = urdf::parseURDFFile(urdf_path);
     if(urdf_model!=NULL) {
         kdl_parser::treeFromUrdfModel(*urdf_model, robot_tree);
+        joints.resize(robot_tree.getNrOfJoints());
     }
     else {
         std::cerr<<"no robot model"<<std::endl;
@@ -52,6 +55,10 @@ void RobotModel::parseURDF(const std::string &urdf_path) {
 }
 
 void RobotModel::loadLinkMeshes() {
+
+    // get root frame
+    root_frame = urdf_model->getRoot()->name;
+
     std::vector<boost::shared_ptr<urdf::Link>> links;
     urdf_model->getLinks(links);
 
@@ -88,6 +95,40 @@ void RobotModel::renderSetup() {
 
 void RobotModel::render(pangolin::GlSlProgram &shader) {
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
+        // kineamtic chain from root to frame
+        KDL::Chain chain;
+        robot_tree.getChain(root_frame, it->first, chain);
+        KDL::ChainFkSolverPos_recursive fk(chain);
+
+        KDL::JntArray j(chain.getNrOfJoints());
+
+        // get pose of frame
+        KDL::Frame frame_pose;
+        //fk.JntToCart(joints, frame_pose);
+        fk.JntToCart(j, frame_pose);
+
+        pangolin::OpenGlMatrix M;
+        M.SetIdentity();
+        // translation
+        M(0, 3) = frame_pose.p.x();
+        M(1, 3) = frame_pose.p.y();
+        M(2, 3) = frame_pose.p.z();
+        // rotation
+        M(0,0) = frame_pose.M(0,0);
+        M(0,1) = frame_pose.M(0,1);
+        M(0,2) = frame_pose.M(0,2);
+        M(1,0) = frame_pose.M(1,0);
+        M(1,1) = frame_pose.M(1,1);
+        M(1,2) = frame_pose.M(1,2);
+        M(2,0) = frame_pose.M(2,0);
+        M(2,1) = frame_pose.M(2,1);
+        M(2,2) = frame_pose.M(2,2);
+
+        // apply frame transformation to shader
+        shader.Bind();
+        shader.SetUniform("M",M);
+        shader.Unbind();
+
         it->second->render(shader);
     }
 }

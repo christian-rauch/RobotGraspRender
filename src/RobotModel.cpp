@@ -43,7 +43,6 @@ void RobotModel::parseURDF(const std::string &urdf_path) {
     urdf_model = urdf::parseURDFFile(urdf_path);
     if(urdf_model!=NULL) {
         kdl_parser::treeFromUrdfModel(*urdf_model, robot_tree);
-        joints.resize(robot_tree.getNrOfJoints());
     }
     else {
         std::cerr<<"no robot model"<<std::endl;
@@ -87,6 +86,14 @@ void RobotModel::loadLinkMeshes() {
     }
 }
 
+void RobotModel::loadJointNames() {
+    T_wr.SetIdentity();
+    // initialise joint map
+    for(auto j : urdf_model->joints_) {
+        joints[j.first] = 0;
+    }
+}
+
 void RobotModel::renderSetup() {
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
         it->second->renderSetup();
@@ -100,11 +107,26 @@ void RobotModel::render(pangolin::GlSlProgram &shader) {
         robot_tree.getChain(root_frame, it->first, chain);
         KDL::ChainFkSolverPos_recursive fk(chain);
 
+        // get list of joints in chain (from root to tip)
+        std::vector<float> joint_values;
+        for(KDL::Segment segm : chain.segments) {
+            const std::string jname = segm.getJoint().getName();
+            // only add values of not NONE joints
+            if(segm.getJoint().getType()!=KDL::Joint::None) {
+                joint_values.push_back(joints.at(jname));
+            }
+        }
+
+        assert(joint_values.size()==chain.getNrOfJoints());
+
+        // populate chain joint values
         KDL::JntArray j(chain.getNrOfJoints());
+        for(uint i(0); i<chain.getNrOfJoints(); i++) {
+            j(i) = joint_values[i];
+        }
 
         // get pose of frame
         KDL::Frame frame_pose;
-        //fk.JntToCart(joints, frame_pose);
         fk.JntToCart(j, frame_pose);
 
         pangolin::OpenGlMatrix M;
@@ -126,7 +148,7 @@ void RobotModel::render(pangolin::GlSlProgram &shader) {
 
         // apply frame transformation to shader
         shader.Bind();
-        shader.SetUniform("M",M);
+        shader.SetUniform("M", T_wr*M);
         shader.Unbind();
 
         it->second->render(shader);

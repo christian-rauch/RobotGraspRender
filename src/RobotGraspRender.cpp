@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
     if(!robot_model_path->empty()) {
         robot.parseURDF(robot_model_path);
         robot.loadLinkMeshes();
+        robot.loadJointNames();
     }
 
     // meshes
@@ -239,6 +240,12 @@ int main(int argc, char *argv[]) {
         obj->render(prog);
 
 //        robot.link_meshes["hokuyo_link"]->render(texture_shader);
+
+        robot.T_wr = robot.T_wr.Translate(1,1,1);
+
+        robot.joints["leftShoulderYaw"] = float(rand())/RAND_MAX;
+        robot.joints["leftShoulderPitch"] = float(rand())/RAND_MAX;
+        robot.joints["leftShoulderRoll"] = float(rand())/RAND_MAX;
         robot.render(texture_shader);
 
 //        texture_shader.Unbind();

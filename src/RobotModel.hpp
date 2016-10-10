@@ -13,13 +13,12 @@ typedef boost::shared_ptr<urdf::ModelInterface> ModelInterfacePrt;
 class RobotModel {
 private:
     ModelInterfacePrt urdf_model;
+
     KDL::Tree robot_tree;
 
     std::string root_frame;
 
     std::string mesh_package_path;
-
-    KDL::JntArray joints;   // current joint positions
 
 public:
     RobotModel() { }
@@ -30,11 +29,17 @@ public:
 
     void loadLinkMeshes();
 
+    void loadJointNames();
+
     void renderSetup();
 
     void render(pangolin::GlSlProgram &shader);
 
     std::map<std::string, MeshPtr> link_meshes;
+
+    std::map<std::string, float> joints;    // current joint positions
+
+    pangolin::OpenGlMatrix T_wr;    // robot pose in world
 };
 
 #endif // ROBOTMODEL_HPP

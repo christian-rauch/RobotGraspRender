@@ -4,17 +4,69 @@
 
 #include <RobotModel.hpp>
 
-int main(int argc, char *argv[]) {
+#include <lcm/lcm-cpp.hpp>
+#include <robot_state_t.hpp>
 
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
+class LcmRobotState {
+public:
+    std::map<std::string, float> joints;
+
+    pangolin::OpenGlMatrix T_wr;
+
+    LcmRobotState() {
+        T_wr.SetIdentity();
+    }
+
+    void onRobotState(const lcm::ReceiveBuffer* rbuf, const std::string& channel, const bot_core::robot_state_t* msg) {
+        // joints
+        for(uint i(0); i<msg->num_joints; i++) {
+            joints[msg->joint_name[i]] = msg->joint_position[i];
+        }
+
+        // robot pose
+        T_wr(0, 3) = msg->pose.translation.x;
+        T_wr(1, 3) = msg->pose.translation.y;
+        T_wr(2, 3) = msg->pose.translation.z;
+        // rotation from quaterion
+        const Eigen::Matrix3f rot =
+                Eigen::Quaternion<float>(msg->pose.rotation.w, msg->pose.rotation.x,
+                                         msg->pose.rotation.y, msg->pose.rotation.z)
+                .toRotationMatrix();
+        T_wr(0,0) = rot(0,0);
+        T_wr(0,1) = rot(0,1);
+        T_wr(0,2) = rot(0,2);
+        T_wr(1,0) = rot(1,0);
+        T_wr(1,1) = rot(1,1);
+        T_wr(1,2) = rot(1,2);
+        T_wr(2,0) = rot(2,0);
+        T_wr(2,1) = rot(2,1);
+        T_wr(2,2) = rot(2,2);
+    }
+};
+
+int main(int argc, char *argv[]) {
+    ////////////////////////////////////////////////////////////////////////////
+    /// Configuration
     pangolin::ParseVarsFile(argv[1]);
 
+    pangolin::Var<std::string> lcm_channel("lcm_channel");
     pangolin::Var<std::string> env_path("environment_mesh");
     pangolin::Var<std::string> obj_path("object_mesh");
     pangolin::Var<std::string> robot_model_path("robot_model");
 
+    std::cout<<"channel: "<<lcm_channel<<std::endl;
     std::cout<<"robot: "<<robot_model_path<<std::endl;
     std::cout<<"environment: "<<env_path<<std::endl;
     std::cout<<"object: "<<obj_path<<std::endl;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// LCM Setup
+    LcmRobotState lrs;
+    lcm::LCM lcm;
+    lcm.subscribe(lcm_channel, &LcmRobotState::onRobotState, &lrs);
 
     ////////////////////////////////////////////////////////////////////////////
     /// Window Setup
@@ -127,6 +179,8 @@ int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////////////////
     /// Draw
     while(!pangolin::ShouldQuit()) {
+
+        lcm.handleTimeout(10);
 
         // clear buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -241,11 +295,13 @@ int main(int argc, char *argv[]) {
 
 //        robot.link_meshes["hokuyo_link"]->render(texture_shader);
 
-        robot.T_wr = robot.T_wr.Translate(1,1,1);
+//        robot.T_wr = robot.T_wr.Translate(1,1,1);
+        robot.T_wr = lrs.T_wr;
 
-        robot.joints["leftShoulderYaw"] = float(rand())/RAND_MAX;
-        robot.joints["leftShoulderPitch"] = float(rand())/RAND_MAX;
-        robot.joints["leftShoulderRoll"] = float(rand())/RAND_MAX;
+        for(auto kv : lrs.joints) {
+            robot.joints[kv.first] = kv.second;
+        }
+
         robot.render(texture_shader);
 
 //        texture_shader.Unbind();

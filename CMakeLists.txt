@@ -26,6 +26,12 @@ include_directories(${urdfdom_INCLUDE_DIRS})
 find_package(Boost REQUIRED filesystem system)
 include_directories(${Boost_INCLUDE_DIRS})
 
+# LCM
+pkg_check_modules(LCM REQUIRED lcm)
+include_directories(${lcm_INCLUDE_DIRS})
+# LCM types
+include_directories(lcmtypes_cpp)
+
 # project headers
 include_directories(src)
 
@@ -56,8 +62,9 @@ add_executable(${PROJECT_NAME} ./src/RobotGraspRender.cpp)
 target_link_libraries(${PROJECT_NAME} ${Pangolin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} meshloader)
 target_link_libraries(${PROJECT_NAME} robot_model)
+target_link_libraries(${PROJECT_NAME} ${LCM_LIBRARIES})
 
-get_cmake_property(_variableNames VARIABLES)
-foreach (_variableName ${_variableNames})
-    message(STATUS "${_variableName}=${${_variableName}}")
-endforeach()
+#get_cmake_property(_variableNames VARIABLES)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach()

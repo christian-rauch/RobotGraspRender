@@ -193,6 +193,9 @@ int main(int argc, char *argv[]) {
 //        prog.Bind();
         prog.Bind();
         prog.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
+        pangolin::OpenGlMatrix I;
+        I.SetIdentity();
+        prog.SetUniform("M", I);
         prog.Unbind();
         texture_shader.Bind();
         texture_shader.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
@@ -291,7 +294,6 @@ int main(int argc, char *argv[]) {
 
         //obj->render(texture_shader);
         env->render(prog);
-        obj->render(prog);
 
 //        robot.link_meshes["hokuyo_link"]->render(texture_shader);
 
@@ -303,6 +305,11 @@ int main(int argc, char *argv[]) {
         }
 
         robot.render(texture_shader);
+
+        prog.Bind();
+        prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+        prog.Unbind();
+        obj->render(prog);
 
 //        texture_shader.Unbind();
 

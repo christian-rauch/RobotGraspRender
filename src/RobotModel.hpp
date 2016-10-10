@@ -35,6 +35,8 @@ public:
 
     void render(pangolin::GlSlProgram &shader);
 
+    pangolin::OpenGlMatrix getFramePose(const std::string frame);
+
     std::map<std::string, MeshPtr> link_meshes;
 
     std::map<std::string, float> joints;    // current joint positions

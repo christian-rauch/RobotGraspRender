@@ -100,51 +100,58 @@ void RobotModel::renderSetup() {
     }
 }
 
+pangolin::OpenGlMatrix RobotModel::getFramePose(const std::string frame) {
+    // kineamtic chain from root to frame
+    KDL::Chain chain;
+    robot_tree.getChain(root_frame, frame, chain);
+    KDL::ChainFkSolverPos_recursive fk(chain);
+
+    // get list of joints in chain (from root to tip)
+    std::vector<float> joint_values;
+    for(KDL::Segment segm : chain.segments) {
+        const std::string jname = segm.getJoint().getName();
+        // only add values of not NONE joints
+        if(segm.getJoint().getType()!=KDL::Joint::None) {
+            joint_values.push_back(joints.at(jname));
+        }
+    }
+
+    assert(joint_values.size()==chain.getNrOfJoints());
+
+    // populate chain joint values
+    KDL::JntArray j(chain.getNrOfJoints());
+    for(uint i(0); i<chain.getNrOfJoints(); i++) {
+        j(i) = joint_values[i];
+    }
+
+    // get pose of frame
+    KDL::Frame frame_pose;
+    fk.JntToCart(j, frame_pose);
+
+    // model matrix
+    pangolin::OpenGlMatrix M;
+    M.SetIdentity();
+    // translation
+    M(0, 3) = frame_pose.p.x();
+    M(1, 3) = frame_pose.p.y();
+    M(2, 3) = frame_pose.p.z();
+    // rotation
+    M(0,0) = frame_pose.M(0,0);
+    M(0,1) = frame_pose.M(0,1);
+    M(0,2) = frame_pose.M(0,2);
+    M(1,0) = frame_pose.M(1,0);
+    M(1,1) = frame_pose.M(1,1);
+    M(1,2) = frame_pose.M(1,2);
+    M(2,0) = frame_pose.M(2,0);
+    M(2,1) = frame_pose.M(2,1);
+    M(2,2) = frame_pose.M(2,2);
+
+    return M;
+}
+
 void RobotModel::render(pangolin::GlSlProgram &shader) {
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
-        // kineamtic chain from root to frame
-        KDL::Chain chain;
-        robot_tree.getChain(root_frame, it->first, chain);
-        KDL::ChainFkSolverPos_recursive fk(chain);
-
-        // get list of joints in chain (from root to tip)
-        std::vector<float> joint_values;
-        for(KDL::Segment segm : chain.segments) {
-            const std::string jname = segm.getJoint().getName();
-            // only add values of not NONE joints
-            if(segm.getJoint().getType()!=KDL::Joint::None) {
-                joint_values.push_back(joints.at(jname));
-            }
-        }
-
-        assert(joint_values.size()==chain.getNrOfJoints());
-
-        // populate chain joint values
-        KDL::JntArray j(chain.getNrOfJoints());
-        for(uint i(0); i<chain.getNrOfJoints(); i++) {
-            j(i) = joint_values[i];
-        }
-
-        // get pose of frame
-        KDL::Frame frame_pose;
-        fk.JntToCart(j, frame_pose);
-
-        pangolin::OpenGlMatrix M;
-        M.SetIdentity();
-        // translation
-        M(0, 3) = frame_pose.p.x();
-        M(1, 3) = frame_pose.p.y();
-        M(2, 3) = frame_pose.p.z();
-        // rotation
-        M(0,0) = frame_pose.M(0,0);
-        M(0,1) = frame_pose.M(0,1);
-        M(0,2) = frame_pose.M(0,2);
-        M(1,0) = frame_pose.M(1,0);
-        M(1,1) = frame_pose.M(1,1);
-        M(1,2) = frame_pose.M(1,2);
-        M(2,0) = frame_pose.M(2,0);
-        M(2,1) = frame_pose.M(2,1);
-        M(2,2) = frame_pose.M(2,2);
+        pangolin::OpenGlMatrix M = getFramePose(it->first);
 
         // apply frame transformation to shader
         shader.Bind();

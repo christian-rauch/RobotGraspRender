@@ -79,9 +79,31 @@ int main(int argc, char *argv[]) {
       pangolin::ModelViewLookAt(-0,0.5,-3, 0,0,0, pangolin::AxisY)
     );
 
-    pangolin::View& d_cam = pangolin::CreateDisplay()
-      .SetBounds(0.0, 1.0, 0.0, 1.0, -640.0f/480.0f)
-      .SetHandler(new pangolin::Handler3D(s_cam));
+    // robot view
+    // multisense paramters
+    pangolin::OpenGlRenderState robot_view(
+      pangolin::ProjectionMatrix(1024, 1024,  // width x height
+                                 556.183166504, // f_u
+                                 556.183166504, //f_v
+                                 512, 512,      // centre coordinates
+                                 0.0001,1000)
+    );
+
+//    pangolin::View& d_cam = pangolin::CreateDisplay()
+//      .SetBounds(0.0, 1.0, 0.0, 1.0, -640.0f/480.0f)
+//      .SetHandler(new pangolin::Handler3D(s_cam));
+    pangolin::View &d_cam = pangolin::Display("free view")
+            .SetAspect(640.0f/480.0f)
+            .SetHandler(new pangolin::Handler3D(s_cam));
+    pangolin::View &robot_cam = pangolin::Display("robot view")
+            .SetAspect(640.0f/480.0f)
+            .SetHandler(new pangolin::Handler3D(robot_view));
+
+    pangolin::Display("multi")
+          .SetBounds(0.0, 1.0, 0.0, 1.0)
+          .SetLayout(pangolin::LayoutEqual)
+          .AddDisplay(d_cam)
+          .AddDisplay(robot_cam);
 
     // load and compile shaders
     pangolin::GlSlProgram prog;
@@ -166,6 +188,40 @@ int main(int argc, char *argv[]) {
         robot.render(texture_shader);
 
         // get hand pose from robot and render object at this pose
+        prog.Bind();
+        prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+        prog.Unbind();
+        obj->render(prog);
+
+        /// robot view
+        robot_cam.Activate(robot_view);
+
+        // coordinates in camera frame: look from origin in Z-direction
+        robot_view.SetModelViewMatrix(pangolin::ModelViewLookAt(0,0,0,0,0,3,pangolin::AxisY));
+
+        // follow relative to camera motion
+        const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePose("left_camera_optical_frame");
+        robot_view.Follow(cam_frame.Inverse());
+
+        pangolin::glDrawAxis(0.5);
+
+        prog.Bind();
+        prog.SetUniform("MVP", robot_view.GetProjectionModelViewMatrix());
+        I.SetIdentity();
+        prog.SetUniform("M", I);
+        prog.Unbind();
+        texture_shader.Bind();
+        texture_shader.SetUniform("MVP", robot_view.GetProjectionModelViewMatrix());
+        texture_shader.Unbind();
+
+        env->render(prog);
+
+        robot.addSkip("upperNeckPitchLink");
+        robot.render(texture_shader);
+        robot.resetSkip();
+
+        robot_view.Unfollow();
+
         prog.Bind();
         prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
         prog.Unbind();

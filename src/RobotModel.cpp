@@ -151,6 +151,11 @@ pangolin::OpenGlMatrix RobotModel::getFramePose(const std::string frame) {
 
 void RobotModel::render(pangolin::GlSlProgram &shader) {
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
+
+        // skip meshes that should not be rendered
+        if(skipMeshes.count(it->first))
+            continue;
+
         pangolin::OpenGlMatrix M = getFramePose(it->first);
 
         // apply frame transformation to shader

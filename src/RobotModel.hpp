@@ -5,6 +5,8 @@
 #include <kdl/tree.hpp>
 #include <kdl/jntarray.hpp>
 
+#include <set>
+
 #include "Mesh.hpp"
 #include "MeshLoader.hpp"
 
@@ -20,6 +22,8 @@ private:
 
     std::string mesh_package_path;
 
+    std::set<std::string> skipMeshes;
+
 public:
     RobotModel() { }
 
@@ -34,6 +38,10 @@ public:
     void renderSetup();
 
     void render(pangolin::GlSlProgram &shader);
+
+    void addSkip(const std::string& link) { skipMeshes.insert(link); }
+
+    void resetSkip() { skipMeshes.clear(); }
 
     pangolin::OpenGlMatrix getFramePose(const std::string frame);
 

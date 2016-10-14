@@ -79,9 +79,9 @@ int main(int argc, char *argv[]) {
       pangolin::ModelViewLookAt(-0,0.5,-3, 0,0,0, pangolin::AxisY)
     );
 
-    // robot view
+    // robot camera
     // multisense paramters
-    pangolin::OpenGlRenderState robot_view(
+    pangolin::OpenGlRenderState robot_cam(
       pangolin::ProjectionMatrix(1024, 1024,  // width x height
                                  556.183166504, // f_u
                                  556.183166504, //f_v
@@ -95,26 +95,24 @@ int main(int argc, char *argv[]) {
     pangolin::View &d_cam = pangolin::Display("free view")
             .SetAspect(640.0f/480.0f)
             .SetHandler(new pangolin::Handler3D(s_cam));
-    pangolin::View &robot_cam = pangolin::Display("robot view")
-            .SetAspect(640.0f/480.0f)
-            .SetHandler(new pangolin::Handler3D(robot_view));
+    pangolin::View &robot_view = pangolin::Display("robot view")
+            //.SetAspect(640.0f/480.0f)
+            .SetAspect(1024/1024)
+            .SetHandler(new pangolin::Handler3D(robot_cam));
+    pangolin::View &depth_view = pangolin::Display("depth")
+        .SetAspect(1024/1024)
+        .SetHandler(new pangolin::Handler3D(robot_cam));
+    pangolin::View &label_view = pangolin::Display("labels")
+        .SetAspect(1024/1024)
+        .SetHandler(new pangolin::Handler3D(robot_cam));
 
     pangolin::Display("multi")
           .SetBounds(0.0, 1.0, 0.0, 1.0)
           .SetLayout(pangolin::LayoutEqual)
           .AddDisplay(d_cam)
-          .AddDisplay(robot_cam);
-
-    // load and compile shaders
-    pangolin::GlSlProgram prog;
-    prog.AddShaderFromFile(pangolin::GlSlVertexShader, "SimpleVertexShader.vert");
-    prog.AddShaderFromFile(pangolin::GlSlFragmentShader, "SimpleFragmentShader.frag");
-    prog.Link();
-
-    pangolin::GlSlProgram texture_shader;
-    texture_shader.AddShaderFromFile(pangolin::GlSlVertexShader, "TextureVertexShader.vert");
-    texture_shader.AddShaderFromFile(pangolin::GlSlFragmentShader, "TextureFragmentShader.frag");
-    texture_shader.Link();
+          .AddDisplay(robot_view)
+          .AddDisplay(depth_view)
+          .AddDisplay(label_view);
 
     ////////////////////////////////////////////////////////////////////////////
     /// Load Resources
@@ -147,6 +145,25 @@ int main(int argc, char *argv[]) {
     std::cout<<"obj verts: "<<obj->vertices.size()<<std::endl;
     std::cout<<"obj faces: "<<obj->faces.size()<<std::endl;
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// OpenGL Setup (Shader, Buffer)
+
+    // load and compile shaders
+    pangolin::GlSlProgram prog;
+    prog.AddShaderFromFile(pangolin::GlSlVertexShader, "SimpleVertexShader.vert");
+    prog.AddShaderFromFile(pangolin::GlSlFragmentShader, "SimpleFragmentShader.frag");
+    prog.Link();
+
+    pangolin::GlSlProgram texture_shader;
+    texture_shader.AddShaderFromFile(pangolin::GlSlVertexShader, "TextureVertexShader.vert");
+    texture_shader.AddShaderFromFile(pangolin::GlSlFragmentShader, "TextureFragmentShader.frag");
+    texture_shader.Link();
+
+    pangolin::GlSlProgram label_shader;
+    label_shader.AddShaderFromFile(pangolin::GlSlVertexShader, "LabelVertexShader.vert");
+    label_shader.AddShaderFromFile(pangolin::GlSlFragmentShader, "LabelFragmentShader.frag");
+    label_shader.Link();
+
     // setup opengl buffers for meshes
     env->renderSetup();
     obj->renderSetup();
@@ -162,6 +179,7 @@ int main(int argc, char *argv[]) {
         // clear colour and depth buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        /// free view
         d_cam.Activate(s_cam);
 
 //        pangolin::glDrawColouredCube();
@@ -194,24 +212,24 @@ int main(int argc, char *argv[]) {
         obj->render(prog);
 
         /// robot view
-        robot_cam.Activate(robot_view);
+        robot_view.Activate(robot_cam);
 
         // coordinates in camera frame: look from origin in Z-direction
-        robot_view.SetModelViewMatrix(pangolin::ModelViewLookAt(0,0,0,0,0,3,pangolin::AxisY));
+        robot_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,0,0,0,0,3,pangolin::AxisY));
 
         // follow relative to camera motion
         const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePose("left_camera_optical_frame");
-        robot_view.Follow(cam_frame.Inverse());
+        robot_cam.Follow(cam_frame.Inverse());
 
-        pangolin::glDrawAxis(0.5);
+//        pangolin::glDrawAxis(0.5);
 
         prog.Bind();
-        prog.SetUniform("MVP", robot_view.GetProjectionModelViewMatrix());
+        prog.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
         I.SetIdentity();
         prog.SetUniform("M", I);
         prog.Unbind();
         texture_shader.Bind();
-        texture_shader.SetUniform("MVP", robot_view.GetProjectionModelViewMatrix());
+        texture_shader.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
         texture_shader.Unbind();
 
         env->render(prog);
@@ -220,12 +238,47 @@ int main(int argc, char *argv[]) {
         robot.render(texture_shader);
         robot.resetSkip();
 
-        robot_view.Unfollow();
+        robot_cam.Unfollow();
 
         prog.Bind();
         prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
         prog.Unbind();
         obj->render(prog);
+
+        /// label
+        label_view.Activate(robot_cam);
+
+        // coordinates in camera frame: look from origin in Z-direction
+//        robot_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,0,0,0,0,3,pangolin::AxisY));
+
+        // follow relative to camera motion
+        robot_cam.Follow(cam_frame.Inverse());
+
+//        pangolin::glDrawAxis(0.5);
+
+        label_shader.Bind();
+        label_shader.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
+        I.SetIdentity();
+        label_shader.SetUniform("M", I);
+        label_shader.SetUniform("label_colour", pangolin::Colour::Blue());
+        label_shader.Unbind();
+
+        env->render(label_shader);
+
+        label_shader.Bind();
+        label_shader.SetUniform("label_colour", pangolin::Colour::Red());
+        label_shader.Unbind();
+        robot.addSkip("upperNeckPitchLink");
+        robot.render(label_shader);
+        robot.resetSkip();
+
+        robot_cam.Unfollow();
+
+        label_shader.Bind();
+        label_shader.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+        label_shader.SetUniform("label_colour", pangolin::Colour::Green());
+        label_shader.Unbind();
+        obj->render(label_shader);
 
         // draw
         pangolin::FinishFrame();

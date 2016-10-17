@@ -96,7 +96,6 @@ int main(int argc, char *argv[]) {
             .SetAspect(640.0f/480.0f)
             .SetHandler(new pangolin::Handler3D(s_cam));
     pangolin::View &robot_view = pangolin::Display("robot view")
-            //.SetAspect(640.0f/480.0f)
             .SetAspect(1024/1024)
             .SetHandler(new pangolin::Handler3D(robot_cam));
     pangolin::View &depth_view = pangolin::Display("depth")
@@ -249,7 +248,7 @@ int main(int argc, char *argv[]) {
         label_view.Activate(robot_cam);
 
         // coordinates in camera frame: look from origin in Z-direction
-//        robot_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,0,0,0,0,3,pangolin::AxisY));
+        robot_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,0,0,0,0,3,pangolin::AxisY));
 
         // follow relative to camera motion
         robot_cam.Follow(cam_frame.Inverse());
@@ -280,8 +279,34 @@ int main(int argc, char *argv[]) {
         label_shader.Unbind();
         obj->render(label_shader);
 
+        /// depth image
+        double tempX, tempY, tempZ;
+        float *depth_data = new float[robot_view.v.w*robot_view.v.h];
+        glReadPixels(robot_view.v.l, robot_view.v.b-robot_view.v.h, robot_view.v.w, robot_view.v.h, GL_DEPTH_COMPONENT, GL_FLOAT, depth_data);
+
+        uint8_t *depth_data_vis = new uint8_t[robot_view.v.w*robot_view.v.h];
+
+        pangolin::GlTexture depth_img_vis(robot_view.v.w, robot_view.v.h, GL_LUMINANCE, false, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE);
+
+        std::cout<<"start"<<std::endl;
+        for(double y(robot_view.v.b); y>(robot_view.v.b-robot_view.v.h); y-=1.0) {
+            for(double x(robot_view.v.l); x<(robot_view.v.l+robot_view.v.w); x+=1.0) {
+                robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[uint(x)+uint(y)*robot_view.v.h], tempX, tempY, tempZ);
+                uint index = uint(x)+uint(y)*robot_view.v.h;
+                depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
+            }
+        }
+
+        depth_img_vis.Upload(depth_data_vis, GL_LUMINANCE, GL_UNSIGNED_BYTE);
+
+        depth_view.Activate();
+        glColor4f(1.0f,1.0f,1.0f,1.0f);
+        depth_img_vis.RenderToViewport();
+
         // draw
         pangolin::FinishFrame();
+
+//        delete [] depth_data;
     }
 
     return 0;

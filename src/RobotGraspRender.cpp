@@ -58,12 +58,13 @@ int main(int argc, char *argv[]) {
     pangolin::Var<std::string> obj_path("object_mesh");
     pangolin::Var<std::string> robot_model_path("robot_model");
     pangolin::Var<std::string> data_store_path("dest_dir");
+    pangolin::Var<uint> nframes("save_nframes");
 
     std::cout<<"channel: "<<lcm_channel<<std::endl;
     std::cout<<"robot: "<<robot_model_path<<std::endl;
     std::cout<<"environment: "<<env_path<<std::endl;
     std::cout<<"object: "<<obj_path<<std::endl;
-    std::cout<<"storing data at: "<<data_store_path<<std::endl;
+    std::cout<<"save images every "<<nframes<<" frames to: "<<data_store_path<<std::endl;
 
     ////////////////////////////////////////////////////////////////////////////
     /// LCM Setup
@@ -192,7 +193,10 @@ int main(int argc, char *argv[]) {
         iframe++;
 
         // store img every n frames
-        store_img = (iframe%30 == 0);
+        if(nframes>0)
+            store_img = (iframe%nframes == 0);
+        else
+            store_img = false;
 
         if(store_img)
             iimg++;

@@ -32,6 +32,10 @@ include_directories(${lcm_INCLUDE_DIRS})
 # LCM types
 include_directories(lcmtypes_cpp)
 
+# OpenCV
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 # project headers
 include_directories(src)
 
@@ -63,6 +67,7 @@ target_link_libraries(${PROJECT_NAME} ${Pangolin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} meshloader)
 target_link_libraries(${PROJECT_NAME} robot_model)
 target_link_libraries(${PROJECT_NAME} ${LCM_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
 
 #get_cmake_property(_variableNames VARIABLES)
 #foreach (_variableName ${_variableNames})

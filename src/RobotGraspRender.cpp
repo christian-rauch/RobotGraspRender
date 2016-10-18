@@ -7,8 +7,9 @@
 #include <lcm/lcm-cpp.hpp>
 #include <robot_state_t.hpp>
 
-#include <Eigen/Core>
 #include <Eigen/Geometry>
+
+#include <opencv2/opencv.hpp>
 
 class LcmRobotState {
 public:
@@ -56,11 +57,13 @@ int main(int argc, char *argv[]) {
     pangolin::Var<std::string> env_path("environment_mesh");
     pangolin::Var<std::string> obj_path("object_mesh");
     pangolin::Var<std::string> robot_model_path("robot_model");
+    pangolin::Var<std::string> data_store_path("dest_dir");
 
     std::cout<<"channel: "<<lcm_channel<<std::endl;
     std::cout<<"robot: "<<robot_model_path<<std::endl;
     std::cout<<"environment: "<<env_path<<std::endl;
     std::cout<<"object: "<<obj_path<<std::endl;
+    std::cout<<"storing data at: "<<data_store_path<<std::endl;
 
     ////////////////////////////////////////////////////////////////////////////
     /// LCM Setup
@@ -175,12 +178,24 @@ int main(int argc, char *argv[]) {
     pangolin::GlFramebuffer fbo_buffer(color_buffer, depth_buffer);
 
     std::vector<float> depth_data(w*h);
+    std::vector<uint16_t> depth_data_mm(w*h); // depth in mm
     std::vector<uint8_t> depth_data_vis(w*h);
 
     ////////////////////////////////////////////////////////////////////////////
     /// Draw
+    uint iframe = 0;
+    uint iimg = 0;
+    bool store_img = false;
 
     while(!pangolin::ShouldQuit()) {
+
+        iframe++;
+
+        // store img every n frames
+        store_img = (iframe%30 == 0);
+
+        if(store_img)
+            iimg++;
 
         lcm.handleTimeout(10);
 
@@ -254,7 +269,7 @@ int main(int argc, char *argv[]) {
         obj->render(prog);
 
         // off-screen rendering
-        if(true) {
+        if(store_img) {
             // new view at higher resolution
             glViewport(0,0,w,h);
 
@@ -296,14 +311,12 @@ int main(int argc, char *argv[]) {
 
             // write image
             pangolin::Image<unsigned char> buffer;
-            //pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGBA32");
             pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGB24");
             buffer.Alloc(w, h, w * fmt.bpp/8 );
             glReadBuffer(GL_BACK);
-            glPixelStorei(GL_PACK_ALIGNMENT, 1); // TODO: Avoid this?
-            //glReadPixels(0,0,w,h, GL_RGBA, GL_UNSIGNED_BYTE, buffer.ptr );
+            glPixelStorei(GL_PACK_ALIGNMENT, 1);
             glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
-            pangolin::SaveImage(buffer, fmt, "colour_now.png", false);
+            pangolin::SaveImage(buffer, fmt, (std::string)data_store_path+"/colour_"+std::to_string(iimg)+".png", false);
             buffer.Dealloc();
 
             // deactivate frame buffer
@@ -346,7 +359,7 @@ int main(int argc, char *argv[]) {
         obj->render(label_shader);
 
         // off-screen rendering
-        if(true) {
+        if(store_img) {
             // new view at higher resolution
             glViewport(0,0,w,h);
 
@@ -387,14 +400,12 @@ int main(int argc, char *argv[]) {
 
             // write image
             pangolin::Image<unsigned char> buffer;
-            //pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGBA32");
             pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGB24");
             buffer.Alloc(w, h, w * fmt.bpp/8 );
             glReadBuffer(GL_BACK);
-            glPixelStorei(GL_PACK_ALIGNMENT, 1); // TODO: Avoid this?
-            //glReadPixels(0,0,w,h, GL_RGBA, GL_UNSIGNED_BYTE, buffer.ptr );
+            glPixelStorei(GL_PACK_ALIGNMENT, 1);
             glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
-            pangolin::SaveImage(buffer, fmt, "labels_now.png", false);
+            pangolin::SaveImage(buffer, fmt, (std::string)data_store_path+"/label_"+std::to_string(iimg)+".png", false);
             buffer.Dealloc();
 
             // depth data
@@ -404,6 +415,7 @@ int main(int argc, char *argv[]) {
                 for(double y(0); y<h; y++) {
                     uint index = uint(x)*w+uint(y);
                     robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[index], tempX, tempY, tempZ);
+                    depth_data_mm[index] = tempZ*1000; // mm
                     depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
                 }
             }
@@ -412,40 +424,19 @@ int main(int argc, char *argv[]) {
             pangolin::VideoPixelFormat depth_fmt = pangolin::VideoFormatFromString("GRAY8");
             depth_img_vis.Alloc(w, h, w * depth_fmt.bpp/8 );
             memcpy(depth_img_vis.ptr, depth_data_vis.data(), sizeof(uint8_t)*w*h);
-            pangolin::SaveImage(depth_img_vis, depth_fmt, "depth_now.png", false);
+            pangolin::SaveImage(depth_img_vis, depth_fmt, (std::string)data_store_path+"/depth_"+std::to_string(iimg)+".png", false);
+
+            // store depth values in mm as 16bit image
+            cv::Mat depth_img(w, h, CV_16UC1, depth_data_mm.data());
+            cv::flip(depth_img, depth_img, 0);
+            cv::imwrite((std::string)data_store_path+"/depth_mm_"+std::to_string(iimg)+".png", depth_img);
 
             // deactivate frame buffer
             fbo_buffer.Unbind();
         }
 
-//        /// depth image
-//        double tempX, tempY, tempZ;
-//        float *depth_data = new float[robot_view.v.w*robot_view.v.h];
-//        glReadPixels(robot_view.v.l, robot_view.v.b-robot_view.v.h, robot_view.v.w, robot_view.v.h, GL_DEPTH_COMPONENT, GL_FLOAT, depth_data);
-
-//        uint8_t *depth_data_vis = new uint8_t[robot_view.v.w*robot_view.v.h];
-
-//        pangolin::GlTexture depth_img_vis(robot_view.v.w, robot_view.v.h, GL_LUMINANCE, false, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE);
-
-//        std::cout<<"start"<<std::endl;
-//        for(double y(robot_view.v.b); y>(robot_view.v.b-robot_view.v.h); y-=1.0) {
-//            for(double x(robot_view.v.l); x<(robot_view.v.l+robot_view.v.w); x+=1.0) {
-//                robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[uint(x)+uint(y)*robot_view.v.h], tempX, tempY, tempZ);
-//                uint index = uint(x)+uint(y)*robot_view.v.h;
-//                depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
-//            }
-//        }
-
-//        depth_img_vis.Upload(depth_data_vis, GL_LUMINANCE, GL_UNSIGNED_BYTE);
-
-//        depth_view.Activate();
-//        glColor4f(1.0f,1.0f,1.0f,1.0f);
-//        depth_img_vis.RenderToViewport();
-
         // draw
         pangolin::FinishFrame();
-
-//        delete [] depth_data;
     }
 
     return 0;

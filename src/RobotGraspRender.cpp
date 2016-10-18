@@ -81,17 +81,18 @@ int main(int argc, char *argv[]) {
 
     // robot camera
     // multisense paramters
+    const uint w = 1024;
+    const uint h = 1024;
+    const float z_near = 0.0001;
+    const float z_far = 1000;
     pangolin::OpenGlRenderState robot_cam(
-      pangolin::ProjectionMatrix(1024, 1024,  // width x height
+      pangolin::ProjectionMatrix(w, h,  // width x height
                                  556.183166504, // f_u
                                  556.183166504, //f_v
                                  512, 512,      // centre coordinates
-                                 0.0001,1000)
+                                 z_near, z_far)
     );
 
-//    pangolin::View& d_cam = pangolin::CreateDisplay()
-//      .SetBounds(0.0, 1.0, 0.0, 1.0, -640.0f/480.0f)
-//      .SetHandler(new pangolin::Handler3D(s_cam));
     pangolin::View &d_cam = pangolin::Display("free view")
             .SetAspect(640.0f/480.0f)
             .SetHandler(new pangolin::Handler3D(s_cam));
@@ -167,6 +168,14 @@ int main(int argc, char *argv[]) {
     env->renderSetup();
     obj->renderSetup();
     robot.renderSetup();
+
+    // off-screen buffer
+    pangolin::GlTexture color_buffer(w,h);
+    pangolin::GlRenderBuffer depth_buffer(w,h);
+    pangolin::GlFramebuffer fbo_buffer(color_buffer, depth_buffer);
+
+    std::vector<float> depth_data(w*h);
+    std::vector<uint8_t> depth_data_vis(w*h);
 
     ////////////////////////////////////////////////////////////////////////////
     /// Draw
@@ -244,6 +253,63 @@ int main(int argc, char *argv[]) {
         prog.Unbind();
         obj->render(prog);
 
+        // off-screen rendering
+        if(true) {
+            // new view at higher resolution
+            glViewport(0,0,w,h);
+
+            // activate framebuffer
+            fbo_buffer.Bind();
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // render START
+            // render into frame buffer
+//            glColor3f(1.0,1.0,1.0);
+//            pangolin::glDrawColouredCube();
+
+            robot_cam.Follow(cam_frame.Inverse());
+
+            prog.Bind();
+            prog.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
+            I.SetIdentity();
+            prog.SetUniform("M", I);
+            prog.Unbind();
+            texture_shader.Bind();
+            texture_shader.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
+            texture_shader.Unbind();
+
+            env->render(prog);
+
+            robot.addSkip("upperNeckPitchLink");
+            robot.render(texture_shader);
+            robot.resetSkip();
+
+            robot_cam.Unfollow();
+
+            prog.Bind();
+            prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+            prog.Unbind();
+            obj->render(prog);
+            // render END
+
+            glFlush();
+
+            // write image
+            pangolin::Image<unsigned char> buffer;
+            //pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGBA32");
+            pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGB24");
+            buffer.Alloc(w, h, w * fmt.bpp/8 );
+            glReadBuffer(GL_BACK);
+            glPixelStorei(GL_PACK_ALIGNMENT, 1); // TODO: Avoid this?
+            //glReadPixels(0,0,w,h, GL_RGBA, GL_UNSIGNED_BYTE, buffer.ptr );
+            glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
+            pangolin::SaveImage(buffer, fmt, "colour_now.png", false);
+            buffer.Dealloc();
+
+            // deactivate frame buffer
+            fbo_buffer.Unbind();
+        }
+
         /// label
         label_view.Activate(robot_cam);
 
@@ -279,29 +345,102 @@ int main(int argc, char *argv[]) {
         label_shader.Unbind();
         obj->render(label_shader);
 
-        /// depth image
-        double tempX, tempY, tempZ;
-        float *depth_data = new float[robot_view.v.w*robot_view.v.h];
-        glReadPixels(robot_view.v.l, robot_view.v.b-robot_view.v.h, robot_view.v.w, robot_view.v.h, GL_DEPTH_COMPONENT, GL_FLOAT, depth_data);
+        // off-screen rendering
+        if(true) {
+            // new view at higher resolution
+            glViewport(0,0,w,h);
 
-        uint8_t *depth_data_vis = new uint8_t[robot_view.v.w*robot_view.v.h];
+            // activate framebuffer
+            fbo_buffer.Bind();
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        pangolin::GlTexture depth_img_vis(robot_view.v.w, robot_view.v.h, GL_LUMINANCE, false, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE);
+            // render START
 
-        std::cout<<"start"<<std::endl;
-        for(double y(robot_view.v.b); y>(robot_view.v.b-robot_view.v.h); y-=1.0) {
-            for(double x(robot_view.v.l); x<(robot_view.v.l+robot_view.v.w); x+=1.0) {
-                robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[uint(x)+uint(y)*robot_view.v.h], tempX, tempY, tempZ);
-                uint index = uint(x)+uint(y)*robot_view.v.h;
-                depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
+            robot_cam.Follow(cam_frame.Inverse());
+
+            label_shader.Bind();
+            label_shader.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
+            I.SetIdentity();
+            label_shader.SetUniform("M", I);
+            label_shader.SetUniform("label_colour", pangolin::Colour::Blue());
+            label_shader.Unbind();
+
+            env->render(label_shader);
+
+            label_shader.Bind();
+            label_shader.SetUniform("label_colour", pangolin::Colour::Red());
+            label_shader.Unbind();
+            robot.addSkip("upperNeckPitchLink");
+            robot.render(label_shader);
+            robot.resetSkip();
+
+            robot_cam.Unfollow();
+
+            label_shader.Bind();
+            label_shader.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+            label_shader.SetUniform("label_colour", pangolin::Colour::Green());
+            label_shader.Unbind();
+            obj->render(label_shader);
+            // render END
+
+            glFlush();
+
+            // write image
+            pangolin::Image<unsigned char> buffer;
+            //pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGBA32");
+            pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGB24");
+            buffer.Alloc(w, h, w * fmt.bpp/8 );
+            glReadBuffer(GL_BACK);
+            glPixelStorei(GL_PACK_ALIGNMENT, 1); // TODO: Avoid this?
+            //glReadPixels(0,0,w,h, GL_RGBA, GL_UNSIGNED_BYTE, buffer.ptr );
+            glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
+            pangolin::SaveImage(buffer, fmt, "labels_now.png", false);
+            buffer.Dealloc();
+
+            // depth data
+            glReadPixels(0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, depth_data.data());
+            double tempX, tempY, tempZ;
+            for(double x(0); x<w; x++) {
+                for(double y(0); y<h; y++) {
+                    uint index = uint(x)*w+uint(y);
+                    robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[index], tempX, tempY, tempZ);
+                    depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
+                }
             }
+
+            pangolin::Image<uint8_t> depth_img_vis;
+            pangolin::VideoPixelFormat depth_fmt = pangolin::VideoFormatFromString("GRAY8");
+            depth_img_vis.Alloc(w, h, w * depth_fmt.bpp/8 );
+            memcpy(depth_img_vis.ptr, depth_data_vis.data(), sizeof(uint8_t)*w*h);
+            pangolin::SaveImage(depth_img_vis, depth_fmt, "depth_now.png", false);
+
+            // deactivate frame buffer
+            fbo_buffer.Unbind();
         }
 
-        depth_img_vis.Upload(depth_data_vis, GL_LUMINANCE, GL_UNSIGNED_BYTE);
+//        /// depth image
+//        double tempX, tempY, tempZ;
+//        float *depth_data = new float[robot_view.v.w*robot_view.v.h];
+//        glReadPixels(robot_view.v.l, robot_view.v.b-robot_view.v.h, robot_view.v.w, robot_view.v.h, GL_DEPTH_COMPONENT, GL_FLOAT, depth_data);
 
-        depth_view.Activate();
-        glColor4f(1.0f,1.0f,1.0f,1.0f);
-        depth_img_vis.RenderToViewport();
+//        uint8_t *depth_data_vis = new uint8_t[robot_view.v.w*robot_view.v.h];
+
+//        pangolin::GlTexture depth_img_vis(robot_view.v.w, robot_view.v.h, GL_LUMINANCE, false, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE);
+
+//        std::cout<<"start"<<std::endl;
+//        for(double y(robot_view.v.b); y>(robot_view.v.b-robot_view.v.h); y-=1.0) {
+//            for(double x(robot_view.v.l); x<(robot_view.v.l+robot_view.v.w); x+=1.0) {
+//                robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[uint(x)+uint(y)*robot_view.v.h], tempX, tempY, tempZ);
+//                uint index = uint(x)+uint(y)*robot_view.v.h;
+//                depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
+//            }
+//        }
+
+//        depth_img_vis.Upload(depth_data_vis, GL_LUMINANCE, GL_UNSIGNED_BYTE);
+
+//        depth_view.Activate();
+//        glColor4f(1.0f,1.0f,1.0f,1.0f);
+//        depth_img_vis.RenderToViewport();
 
         // draw
         pangolin::FinishFrame();

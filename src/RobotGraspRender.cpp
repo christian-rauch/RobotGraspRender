@@ -425,6 +425,7 @@ int main(int argc, char *argv[]) {
             depth_img_vis.Alloc(w, h, w * depth_fmt.bpp/8 );
             memcpy(depth_img_vis.ptr, depth_data_vis.data(), sizeof(uint8_t)*w*h);
             pangolin::SaveImage(depth_img_vis, depth_fmt, (std::string)data_store_path+"/depth_"+std::to_string(iimg)+".png", false);
+            depth_img_vis.Dealloc();
 
             // store depth values in mm as 16bit image
             cv::Mat depth_img(w, h, CV_16UC1, depth_data_mm.data());

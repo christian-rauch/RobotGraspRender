@@ -1,7 +1,7 @@
-#version 330 core
-out vec4 color;
+#version 300 es
+out mediump vec4 color;
 
-uniform vec4 label_colour;
+uniform mediump vec4 label_colour;
 
 void main(){
   color = label_colour;

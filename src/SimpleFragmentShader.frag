@@ -1,7 +1,7 @@
-#version 330 core
-in vec3 fragmentColor;
+#version 300 es
+in mediump vec3 fragmentColor;
 
-out vec3 color;
+out mediump vec3 color;
 
 void main(){
   color = fragmentColor;

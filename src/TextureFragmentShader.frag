@@ -1,10 +1,10 @@
-#version 330 core
+#version 300 es
 
 // Interpolated values from the vertex shaders
-in vec2 UV;
+in mediump vec2 UV;
 
 // Ouput data
-out vec3 color;
+out mediump vec3 color;
 
 // Values that stay constant for the whole mesh.
 uniform sampler2D myTextureSampler;

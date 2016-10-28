@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
     pangolin::Var<std::string> robot_model_path("robot_model");
     pangolin::Var<std::string> data_store_path("dest_dir");
     pangolin::Var<uint> nframes("save_nframes");
+    pangolin::Var<std::string> logfile("log_file");
 
     std::cout<<"channel: "<<lcm_channel<<std::endl;
     std::cout<<"robot: "<<robot_model_path<<std::endl;
@@ -69,8 +70,15 @@ int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////////////////
     /// LCM Setup
     LcmRobotState lrs;
-    lcm::LCM lcm;
-    lcm.subscribe(lcm_channel, &LcmRobotState::onRobotState, &lrs);
+    lcm::LCM *lcm;
+    if(!std::string(logfile).empty()) {
+        std::cout<<"reading from log file: "<<logfile<<std::endl;
+        lcm = new lcm::LCM("file://"+(std::string)logfile);
+    }
+    else {
+        lcm = new lcm::LCM();
+    }
+    lcm->subscribe(lcm_channel, &LcmRobotState::onRobotState, &lrs);
 
     ////////////////////////////////////////////////////////////////////////////
     /// Window Setup
@@ -201,7 +209,7 @@ int main(int argc, char *argv[]) {
         if(store_img)
             iimg++;
 
-        lcm.handleTimeout(10);
+        lcm->handleTimeout(10);
 
         // clear colour and depth buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -443,6 +451,8 @@ int main(int argc, char *argv[]) {
         // draw
         pangolin::FinishFrame();
     }
+
+    delete lcm;
 
     return 0;
 }

@@ -124,6 +124,10 @@ int main(int argc, char *argv[]) {
     pangolin::Var<std::string> joint_conf_path("joint_config_path");
     pangolin::Var<std::string> joint_name_path("joint_name_path");
 
+    pangolin::Var<bool> save_background("save_background");
+    pangolin::Var<bool> save_object("save_object");
+    pangolin::Var<bool> save_robot("save_robot");
+
     std::cout<<"channel: "<<lcm_channel<<std::endl;
     std::cout<<"robot: "<<robot_model_path<<std::endl;
     std::cout<<"environment: "<<env_path<<std::endl;
@@ -286,10 +290,7 @@ int main(int argc, char *argv[]) {
         iframe++;
 
         // store img every n frames
-        if(nframes>0)
-            store_img = (iframe%nframes == 0);
-        else
-            store_img = false;
+        store_img = (nframes>0) ? (iframe%nframes == 0) : false;
 
         if(store_img)
             iimg++;
@@ -402,18 +403,24 @@ int main(int argc, char *argv[]) {
             texture_shader.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
             texture_shader.Unbind();
 
-            env->render(prog);
+            if(save_background) {
+                env->render(prog);
+            }
 
-            robot.addSkip("upperNeckPitchLink");
-            robot.render(texture_shader);
-            robot.resetSkip();
+            if(save_robot) {
+                robot.addSkip("upperNeckPitchLink");
+                robot.render(texture_shader);
+                robot.resetSkip();
+            }
 
             robot_cam.Unfollow();
 
-            prog.Bind();
-            prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
-            prog.Unbind();
-            obj->render(prog);
+            if(save_object) {
+                prog.Bind();
+                prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+                prog.Unbind();
+                obj->render(prog);
+            }
             // render END
 
             glFlush();
@@ -480,29 +487,34 @@ int main(int argc, char *argv[]) {
 
             robot_cam.Follow(cam_frame.Inverse());
 
-            label_shader.Bind();
-            label_shader.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
-            I.SetIdentity();
-            label_shader.SetUniform("M", I);
-            label_shader.SetUniform("label_colour", pangolin::Colour::Blue());
-            label_shader.Unbind();
+            if(save_background) {
+                label_shader.Bind();
+                label_shader.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
+                I.SetIdentity();
+                label_shader.SetUniform("M", I);
+                label_shader.SetUniform("label_colour", pangolin::Colour::Blue());
+                label_shader.Unbind();
+                env->render(label_shader);
+            }
 
-            env->render(label_shader);
-
-            label_shader.Bind();
-            label_shader.SetUniform("label_colour", pangolin::Colour::Red());
-            label_shader.Unbind();
-            robot.addSkip("upperNeckPitchLink");
-            robot.render(label_shader);
-            robot.resetSkip();
+            if(save_robot) {
+                label_shader.Bind();
+                label_shader.SetUniform("label_colour", pangolin::Colour::Red());
+                label_shader.Unbind();
+                robot.addSkip("upperNeckPitchLink");
+                robot.render(label_shader);
+                robot.resetSkip();
+            }
 
             robot_cam.Unfollow();
 
-            label_shader.Bind();
-            label_shader.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
-            label_shader.SetUniform("label_colour", pangolin::Colour::Green());
-            label_shader.Unbind();
-            obj->render(label_shader);
+            if(save_object) {
+                label_shader.Bind();
+                label_shader.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+                label_shader.SetUniform("label_colour", pangolin::Colour::Green());
+                label_shader.Unbind();
+                obj->render(label_shader);
+            }
             // render END
 
             glFlush();

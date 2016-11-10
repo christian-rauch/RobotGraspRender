@@ -11,6 +11,11 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <ios>
+
+#include <dirent.h>
+#include <sys/stat.h>
+
 class LcmRobotState {
 public:
     std::map<std::string, float> joints;
@@ -48,6 +53,62 @@ public:
     }
 };
 
+class CSVjoints {
+public:
+    CSVjoints() { }
+
+    ~CSVjoints() {
+        csv_file.close();
+        name_file.close();
+    }
+
+    void open(const std::string &path, const std::string &name_path) {
+        csv_file.open(path);
+        name_file.open(name_path);
+    }
+
+    bool isOpen() {
+        return csv_file.is_open();
+    }
+
+    void setJointNames() {
+        jnames.clear();
+        std::string jname;
+        while(!std::getline(name_file, jname).eof()) {
+            jnames.push_back(jname);
+        }
+    }
+
+    std::map<std::string, float> getNext() {
+        std::vector<float> jvalues;
+
+        std::string val_line;
+        if(!std::getline(csv_file, val_line).eof()) {
+            // continue
+            std::stringstream ss_line(val_line);
+            std::string v;
+            while(std::getline(ss_line, v, ',')) {
+                jvalues.push_back(std::stof(v));
+            }
+        }
+
+        std::map<std::string, float> joints;
+        if(jvalues.size()>0) {
+            // create named joints
+            assert(jnames.size() == jvalues.size());
+            std::transform(jnames.begin(), jnames.end(), jvalues.begin(),
+                   std::inserter(joints, joints.end()), std::make_pair<std::string const&, float const&>);
+        }
+        return joints;
+    }
+
+private:
+    std::ifstream csv_file;
+    std::ifstream name_file;
+
+    std::vector<std::string> jnames;
+};
+
 int main(int argc, char *argv[]) {
     ////////////////////////////////////////////////////////////////////////////
     /// Configuration
@@ -60,6 +121,8 @@ int main(int argc, char *argv[]) {
     pangolin::Var<std::string> data_store_path("dest_dir");
     pangolin::Var<uint> nframes("save_nframes");
     pangolin::Var<std::string> logfile("log_file");
+    pangolin::Var<std::string> joint_conf_path("joint_config_path");
+    pangolin::Var<std::string> joint_name_path("joint_name_path");
 
     std::cout<<"channel: "<<lcm_channel<<std::endl;
     std::cout<<"robot: "<<robot_model_path<<std::endl;
@@ -68,9 +131,11 @@ int main(int argc, char *argv[]) {
     std::cout<<"save images every "<<nframes<<" frames to: "<<data_store_path<<std::endl;
 
     ////////////////////////////////////////////////////////////////////////////
-    /// LCM Setup
+    /// I/O Setup
     LcmRobotState lrs;
-    lcm::LCM *lcm;
+    lcm::LCM *lcm = NULL;
+    CSVjoints csvj;
+
     if(!std::string(logfile).empty()) {
         std::cout<<"reading from log file: "<<logfile<<std::endl;
         lcm = new lcm::LCM("file://"+(std::string)logfile);
@@ -78,7 +143,27 @@ int main(int argc, char *argv[]) {
     else {
         lcm = new lcm::LCM();
     }
-    lcm->subscribe(lcm_channel, &LcmRobotState::onRobotState, &lrs);
+
+    if(std::string(joint_conf_path).empty()) {
+        // no csv, use published robot state
+        lcm->subscribe(lcm_channel, &LcmRobotState::onRobotState, &lrs);
+    }
+    else {
+        // read joints values from csv and quit at end-of-file
+        std::cout<<"reading joint config from: "<<joint_conf_path<<std::endl;
+        csvj.open(joint_conf_path, joint_name_path);
+        csvj.setJointNames();
+    }
+
+    // check and create target directory
+    if(!opendir(std::string(data_store_path).c_str()) && (errno==ENOENT)) {
+        // directory does not exist
+        std::cout<<"creating new directory: "<<std::string(data_store_path)<<std::endl;
+        // S_IRWXU: read+write by owner
+        // S_IRWXG: read+write by group
+        // S_IROTH: read only by others
+        mkdir(std::string(data_store_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     /// Window Setup
@@ -100,7 +185,7 @@ int main(int argc, char *argv[]) {
     pangolin::OpenGlRenderState robot_cam(
       pangolin::ProjectionMatrix(w, h,  // width x height
                                  556.183166504, // f_u
-                                 556.183166504, //f_v
+                                 556.183166504, // f_v
                                  512, 512,      // centre coordinates
                                  z_near, z_far)
     );
@@ -209,7 +294,8 @@ int main(int argc, char *argv[]) {
         if(store_img)
             iimg++;
 
-        lcm->handleTimeout(10);
+        if(lcm!=NULL)
+            lcm->handleTimeout(10);
 
         // clear colour and depth buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -235,9 +321,20 @@ int main(int argc, char *argv[]) {
 
         // articulate and render robot
         robot.T_wr = lrs.T_wr;
-        for(auto kv : lrs.joints) {
-            robot.joints[kv.first] = kv.second;
+        if(lcm!=NULL) {
+            for(auto kv : lrs.joints) {
+                robot.joints[kv.first] = kv.second;
+            }
         }
+
+        if(csvj.isOpen()) {
+            auto jv = csvj.getNext();
+            if(!jv.empty())
+                robot.joints = jv;
+            else
+                return 0;
+        }
+
         robot.render(texture_shader);
 
         // get hand pose from robot and render object at this pose

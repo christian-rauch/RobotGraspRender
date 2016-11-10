@@ -4,7 +4,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include <iostream>
+//#include <iostream>
 #include <cassert>
 
 #include <pangolin/image/image_io.h>
@@ -41,7 +41,7 @@ void getMesh(const aiScene* const scene, const aiNode* const node,
                 for(uint iText(0); iText < material->GetTextureCount(aiTextureType_DIFFUSE); iText++) {
                     aiString path;
                     material->GetTexture(aiTextureType_DIFFUSE, iText, &path);
-                    std::cout<<"diffuse texture at: "<<path.C_Str()<<std::endl;
+                    //std::cout<<"diffuse texture at: "<<path.C_Str()<<std::endl;
                     obj_mesh.texture = pangolin::LoadImage(obj_mesh.directory+'/'+path.C_Str());
                 } // texture
             } // materials
@@ -118,8 +118,8 @@ MeshPtr getMesh(const std::string &path) {
         std::cerr<<"Import error: "<<importer.GetErrorString()<<std::endl;
     }
 
-    std::cout<<"material?: "<<scene->HasMaterials()<<std::endl;
-    std::cout<<"texture?: "<<scene->HasTextures()<<std::endl;
+    //std::cout<<"material?: "<<scene->HasMaterials()<<std::endl;
+    //std::cout<<"texture?: "<<scene->HasTextures()<<std::endl;
 
     if(scene->mNumMaterials>1) {
         std::cerr<<"more than 1 material is currently not supported!"<<std::endl;
@@ -139,7 +139,7 @@ MeshPtr getMesh(const std::string &path) {
 
     const uint nMeshes = scene->mNumMeshes;
 
-    std::cout<<"meshes: "<<nMeshes<<std::endl;
+    //std::cout<<"meshes: "<<nMeshes<<std::endl;
 
 //    std::vector<MeshPtr> meshes;
 

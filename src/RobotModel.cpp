@@ -78,7 +78,7 @@ void RobotModel::loadLinkMeshes() {
                     mesh_path = mesh_package_path + mesh_path;
                 }
 
-                std::cout<<"link: "<<l->name<<" has mesh: "<<mesh_path<<std::endl;
+                //std::cout<<"link: "<<l->name<<" has mesh: "<<mesh_path<<std::endl;
 
                 link_meshes[l->name] = MeshLoader::getMesh(mesh_path);
             }

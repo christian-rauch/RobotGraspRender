@@ -31,11 +31,20 @@ public:
 
     void parseURDF(const std::string &urdf_path);
 
+    /**
+     * @brief loadLinkMeshes load all meshes defined in URDF
+     */
     void loadLinkMeshes();
 
+    /**
+     * @brief loadJointNames initialise the joints and the robot pose
+     */
     void loadJointNames();
 
-    void renderSetup();
+    /**
+     * @brief renderSetup initialise OpenGL buffer and upload mesh data
+     */
+    void renderSetup(const bool single_colour=true);
 
     void render(pangolin::GlSlProgram &shader);
 
@@ -46,6 +55,8 @@ public:
     pangolin::OpenGlMatrix getFramePose(const std::string frame);
 
     std::map<std::string, MeshPtr> link_meshes;
+
+    std::map<std::string, pangolin::Colour> link_colours;
 
     std::map<std::string, float> joints;    // current joint positions
 

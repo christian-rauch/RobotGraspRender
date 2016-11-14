@@ -221,7 +221,9 @@ int main(int argc, char *argv[]) {
     RobotModel robot;
     if(!robot_model_path->empty()) {
         robot.parseURDF(robot_model_path);
+        // load meshes and set unique colour
         robot.loadLinkMeshes();
+        // initialising joints and pose
         robot.loadJointNames();
     }
 
@@ -268,7 +270,8 @@ int main(int argc, char *argv[]) {
     // setup opengl buffers for meshes
     env->renderSetup();
     obj->renderSetup();
-    robot.renderSetup();
+    //robot.renderSetup();
+    robot.renderSetup(false);
 
     // off-screen buffer
     pangolin::GlTexture color_buffer(w,h);
@@ -317,6 +320,10 @@ int main(int argc, char *argv[]) {
         texture_shader.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
         texture_shader.Unbind();
 
+        label_shader.Bind();
+        label_shader.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
+        label_shader.Unbind();
+
         // render environment
         env->render(prog);
 
@@ -336,7 +343,8 @@ int main(int argc, char *argv[]) {
                 return 0;
         }
 
-        robot.render(texture_shader);
+        //robot.render(texture_shader);
+        robot.render(label_shader);
 
         // get hand pose from robot and render object at this pose
         prog.Bind();

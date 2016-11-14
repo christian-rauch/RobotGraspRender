@@ -54,7 +54,6 @@ void RobotModel::parseURDF(const std::string &urdf_path) {
 }
 
 void RobotModel::loadLinkMeshes() {
-
     // get root frame
     root_frame = urdf_model->getRoot()->name;
 
@@ -94,9 +93,14 @@ void RobotModel::loadJointNames() {
     }
 }
 
-void RobotModel::renderSetup() {
+void RobotModel::renderSetup(const bool single_colour) {
+    pangolin::ColourWheel colours;
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
         it->second->renderSetup();
+        if(!single_colour) {
+            // assign unique colours to meshes
+            link_colours[it->first] = colours.GetUniqueColour();
+        }
     }
 }
 
@@ -161,6 +165,9 @@ void RobotModel::render(pangolin::GlSlProgram &shader) {
         // apply frame transformation to shader
         shader.Bind();
         shader.SetUniform("M", T_wr*M);
+        if(!link_colours.empty()) {
+            shader.SetUniform("label_colour", link_colours[it->first]);
+        }
         shader.Unbind();
 
         it->second->render(shader);

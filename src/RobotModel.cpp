@@ -94,7 +94,7 @@ void RobotModel::loadJointNames() {
 }
 
 void RobotModel::renderSetup(const bool single_colour) {
-    pangolin::ColourWheel colours;
+    pangolin::ColourWheel colours(1.0, 1.0, 1.0);
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
         it->second->renderSetup();
         if(!single_colour) {

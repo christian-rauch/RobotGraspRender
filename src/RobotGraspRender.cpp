@@ -26,9 +26,9 @@ public:
         T_wr.SetIdentity();
     }
 
-    void onRobotState(const lcm::ReceiveBuffer* rbuf, const std::string& channel, const bot_core::robot_state_t* msg) {
+    void onRobotState(const lcm::ReceiveBuffer* /*rbuf*/, const std::string& /*channel*/, const bot_core::robot_state_t* msg) {
         // joints
-        for(uint i(0); i<msg->num_joints; i++) {
+        for(uint i(0); i<uint(msg->num_joints); i++) {
             joints[msg->joint_name[i]] = msg->joint_position[i];
         }
 
@@ -37,8 +37,8 @@ public:
         T_wr(1, 3) = msg->pose.translation.y;
         T_wr(2, 3) = msg->pose.translation.z;
         // rotation from quaterion
-        const Eigen::Matrix3f rot =
-                Eigen::Quaternion<float>(msg->pose.rotation.w, msg->pose.rotation.x,
+        const Eigen::Matrix3d rot =
+                Eigen::Quaterniond(msg->pose.rotation.w, msg->pose.rotation.x,
                                          msg->pose.rotation.y, msg->pose.rotation.z)
                 .toRotationMatrix();
         T_wr(0,0) = rot(0,0);
@@ -109,7 +109,7 @@ private:
     std::vector<std::string> jnames;
 };
 
-int main(int argc, char *argv[]) {
+int main(int /*argc*/, char *argv[]) {
     ////////////////////////////////////////////////////////////////////////////
     /// Configuration
     pangolin::ParseVarsFile(argv[1]);
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
 
     if(!std::string(logfile).empty()) {
         std::cout<<"reading from log file: "<<logfile<<std::endl;
-        lcm = new lcm::LCM("file://"+(std::string)logfile);
+        lcm = new lcm::LCM("file://"+std::string(logfile));
     }
     else {
         lcm = new lcm::LCM();
@@ -184,8 +184,8 @@ int main(int argc, char *argv[]) {
     // multisense paramters
     const uint w = 1024;
     const uint h = 1024;
-    const float z_near = 0.0001;
-    const float z_far = 1000;
+    const double z_near = 0.0001;
+    const double z_far = 1000;
     pangolin::OpenGlRenderState robot_cam(
       pangolin::ProjectionMatrix(w, h,  // width x height
                                  556.183166504, // f_u
@@ -440,7 +440,7 @@ int main(int argc, char *argv[]) {
             glReadBuffer(GL_BACK);
             glPixelStorei(GL_PACK_ALIGNMENT, 1);
             glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
-            pangolin::SaveImage(buffer, fmt, (std::string)data_store_path+"/colour_"+std::to_string(iimg)+".png", false);
+            pangolin::SaveImage(buffer, fmt, std::string(data_store_path)+"/colour_"+std::to_string(iimg)+".png", false);
             buffer.Dealloc();
 
             // deactivate frame buffer
@@ -534,7 +534,7 @@ int main(int argc, char *argv[]) {
             glReadBuffer(GL_BACK);
             glPixelStorei(GL_PACK_ALIGNMENT, 1);
             glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
-            pangolin::SaveImage(buffer, fmt, (std::string)data_store_path+"/label_"+std::to_string(iimg)+".png", false);
+            pangolin::SaveImage(buffer, fmt, std::string(data_store_path)+"/label_"+std::to_string(iimg)+".png", false);
             buffer.Dealloc();
 
             // depth data
@@ -553,13 +553,13 @@ int main(int argc, char *argv[]) {
             pangolin::VideoPixelFormat depth_fmt = pangolin::VideoFormatFromString("GRAY8");
             depth_img_vis.Alloc(w, h, w * depth_fmt.bpp/8 );
             memcpy(depth_img_vis.ptr, depth_data_vis.data(), sizeof(uint8_t)*w*h);
-            pangolin::SaveImage(depth_img_vis, depth_fmt, (std::string)data_store_path+"/depth_"+std::to_string(iimg)+".png", false);
+            pangolin::SaveImage(depth_img_vis, depth_fmt, std::string(data_store_path)+"/depth_"+std::to_string(iimg)+".png", false);
             depth_img_vis.Dealloc();
 
             // store depth values in mm as 16bit image
             cv::Mat depth_img(w, h, CV_16UC1, depth_data_mm.data());
             cv::flip(depth_img, depth_img, 0);
-            cv::imwrite((std::string)data_store_path+"/depth_mm_"+std::to_string(iimg)+".png", depth_img);
+            cv::imwrite(std::string(data_store_path)+"/depth_mm_"+std::to_string(iimg)+".png", depth_img);
 
             // deactivate frame buffer
             fbo_buffer.Unbind();

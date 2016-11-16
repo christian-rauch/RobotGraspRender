@@ -116,7 +116,13 @@ pangolin::OpenGlMatrix RobotModel::getFramePose(const std::string frame) {
         const std::string jname = segm.getJoint().getName();
         // only add values of not NONE joints
         if(segm.getJoint().getType()!=KDL::Joint::None) {
-            joint_values.push_back(joints.at(jname));
+            if(joints.count(jname)) {
+                joint_values.push_back(joints.at(jname));
+            }
+            else {
+                // set not provided joint values to 0
+                joint_values.push_back(0);
+            }
         }
     }
 

@@ -74,7 +74,8 @@ public:
     void setJointNames() {
         jnames.clear();
         std::string jname;
-        while(!std::getline(name_file, jname).eof()) {
+
+        while(std::getline(name_file, jname).good()) {
             jnames.push_back(jname);
         }
     }

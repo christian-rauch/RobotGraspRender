@@ -62,13 +62,25 @@ public:
         name_file.close();
     }
 
-    void open(const std::string &path, const std::string &name_path) {
+    bool open(const std::string &path, const std::string &name_path) {
         csv_file.open(path);
         name_file.open(name_path);
+
+        if(!csv_file.good()) {
+            std::cerr<<"error openning joints file: "<<path<<std::endl;
+        }
+        if(!name_file.good()) {
+            std::cerr<<"error openning names file: "<<name_path<<std::endl;
+        }
+
+        if(csv_file.fail() || name_file.fail())
+            return false;
+
+        return isOpen();
     }
 
     bool isOpen() {
-        return csv_file.is_open();
+        return csv_file.is_open() && name_file.is_open();
     }
 
     void setJointNames() {
@@ -84,7 +96,7 @@ public:
         std::vector<float> jvalues;
 
         std::string val_line;
-        if(!std::getline(csv_file, val_line).eof()) {
+        if(std::getline(csv_file, val_line).good()) {
             // continue
             std::stringstream ss_line(val_line);
             std::string v;
@@ -156,7 +168,8 @@ int main(int /*argc*/, char *argv[]) {
     else {
         // read joints values from csv and quit at end-of-file
         std::cout<<"reading joint config from: "<<joint_conf_path<<std::endl;
-        csvj.open(joint_conf_path, joint_name_path);
+        if(!csvj.open(joint_conf_path, joint_name_path))
+            std::cerr<<"could not open files"<<std::endl;
         csvj.setJointNames();
     }
 

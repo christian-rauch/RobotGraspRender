@@ -108,7 +108,9 @@ public:
         std::map<std::string, float> joints;
         if(jvalues.size()>0) {
             // create named joints
-            assert(jnames.size() == jvalues.size());
+            if(!(jnames.size() == jvalues.size())) {
+                throw std::runtime_error("joint size does not match");
+            }
             std::transform(jnames.begin(), jnames.end(), jvalues.begin(),
                    std::inserter(joints, joints.end()), std::make_pair<std::string const&, float const&>);
         }
@@ -209,7 +211,7 @@ int main(int /*argc*/, char *argv[]) {
     );
 
     pangolin::View &d_cam = pangolin::Display("free view")
-            .SetAspect(640.0f/480.0f)
+            .SetAspect(640.0/480.0)
             .SetHandler(new pangolin::Handler3D(s_cam));
     pangolin::View &robot_view = pangolin::Display("robot view")
             .SetAspect(1024/1024)

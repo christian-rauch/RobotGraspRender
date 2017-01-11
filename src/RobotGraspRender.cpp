@@ -451,7 +451,7 @@ int main(int /*argc*/, char *argv[]) {
 
             // write image
             pangolin::Image<unsigned char> buffer;
-            pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGB24");
+            pangolin::PixelFormat fmt = pangolin::PixelFormatFromString("RGB24");
             buffer.Alloc(w, h, w * fmt.bpp/8 );
             glReadBuffer(GL_BACK);
             glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -545,7 +545,7 @@ int main(int /*argc*/, char *argv[]) {
 
             // write image
             pangolin::Image<unsigned char> buffer;
-            pangolin::VideoPixelFormat fmt = pangolin::VideoFormatFromString("RGB24");
+            pangolin::PixelFormat fmt = pangolin::PixelFormatFromString("RGB24");
             buffer.Alloc(w, h, w * fmt.bpp/8 );
             glReadBuffer(GL_BACK);
             glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -566,7 +566,7 @@ int main(int /*argc*/, char *argv[]) {
             }
 
             pangolin::Image<uint8_t> depth_img_vis;
-            pangolin::VideoPixelFormat depth_fmt = pangolin::VideoFormatFromString("GRAY8");
+            pangolin::PixelFormat depth_fmt = pangolin::PixelFormatFromString("GRAY8");
             depth_img_vis.Alloc(w, h, w * depth_fmt.bpp/8 );
             memcpy(depth_img_vis.ptr, depth_data_vis.data(), sizeof(uint8_t)*w*h);
             pangolin::SaveImage(depth_img_vis, depth_fmt, std::string(data_store_path)+"/depth_"+std::to_string(iimg)+".png", false);

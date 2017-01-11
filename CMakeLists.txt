@@ -7,7 +7,7 @@ add_definitions(-std=c++11)
 find_package(PkgConfig)
 
 # Pangolin
-find_package(Pangolin 0.4 REQUIRED)
+find_package(Pangolin 0.5 REQUIRED)
 include_directories(${Pangolin_INCLUDE_DIRS})
 
 # Assimp

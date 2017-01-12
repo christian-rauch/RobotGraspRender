@@ -78,6 +78,7 @@ install(DIRECTORY src/ DESTINATION include/${PROJECT_NAME} FILES_MATCHING PATTER
 SET(PKG_CONFIG_REQUIRES "pangolin assimp urdfdom orocos_kdl")
 SET(PKG_CONFIG_LIBDIR       "\${prefix}/lib" )
 SET(PKG_CONFIG_INCLUDEDIR   "\${prefix}/include" )
+SET(PKG_CONFIG_LIBS         "-L\${libdir} -lrobot_model -lkdl_parser -lmeshloader" )
 SET(PKG_CONFIG_CFLAGS       "-I\${includedir}" )
 
 CONFIGURE_FILE(

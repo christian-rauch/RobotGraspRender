@@ -85,6 +85,12 @@ void RobotModel::loadLinkMeshes() {
     }
 }
 
+void RobotModel::voxelize(const float resolution, const float precision) {
+    for(const auto &m : link_meshes) {
+        m.second->voxelize(resolution, precision);
+    }
+}
+
 void RobotModel::loadJointNames() {
     T_wr.SetIdentity();
     // initialise joint map

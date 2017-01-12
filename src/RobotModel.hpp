@@ -36,6 +36,8 @@ public:
      */
     void loadLinkMeshes();
 
+    void voxelize(const float resolution=0.01, const float precision=0.01);
+
     /**
      * @brief loadJointNames initialise the joints and the robot pose
      */

@@ -41,6 +41,8 @@ public:
     void renderSetup();
 
     void render(pangolin::GlSlProgram &shader);
+
+    void voxelize(const float resolution=0.01, const float precision=0.001);
 };
 
 #endif // MESH_H

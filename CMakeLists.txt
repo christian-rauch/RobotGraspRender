@@ -4,6 +4,8 @@ project(RobotGraspRender)
 # turn on c++11
 add_definitions(-std=c++11)
 
+set(BUILD_SHARED_LIBS true)
+
 find_package(PkgConfig)
 
 # Pangolin
@@ -68,6 +70,23 @@ target_link_libraries(${PROJECT_NAME} meshloader)
 target_link_libraries(${PROJECT_NAME} robot_model)
 target_link_libraries(${PROJECT_NAME} ${LCM_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
+
+# install
+install(TARGETS meshloader robot_model kdl_parser LIBRARY DESTINATION lib)  # shared library
+install(DIRECTORY src/ DESTINATION include/${PROJECT_NAME} FILES_MATCHING PATTERN "*.hpp")
+
+SET(PKG_CONFIG_REQUIRES "pangolin assimp urdfdom orocos_kdl")
+SET(PKG_CONFIG_LIBDIR       "\${prefix}/lib" )
+SET(PKG_CONFIG_INCLUDEDIR   "\${prefix}/include" )
+SET(PKG_CONFIG_CFLAGS       "-I\${includedir}" )
+
+CONFIGURE_FILE(
+  "${CMAKE_CURRENT_SOURCE_DIR}/pkg-config.pc.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc"
+)
+
+INSTALL(FILES "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc"
+        DESTINATION lib/pkgconfig)
 
 #get_cmake_property(_variableNames VARIABLES)
 #foreach (_variableName ${_variableNames})

@@ -287,7 +287,8 @@ int main(int /*argc*/, char *argv[]) {
     env->renderSetup();
     obj->renderSetup();
     //robot.renderSetup();
-    robot.renderSetup(false);
+    robot.generateMeshColours(false);
+    robot.renderSetup();
 
     // off-screen buffer
     pangolin::GlTexture color_buffer(w,h);

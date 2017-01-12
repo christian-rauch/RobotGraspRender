@@ -93,10 +93,15 @@ void RobotModel::loadJointNames() {
     }
 }
 
-void RobotModel::renderSetup(const bool single_colour) {
-    pangolin::ColourWheel colours(1.0, 1.0, 1.0);
+void RobotModel::renderSetup() {
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
         it->second->renderSetup();
+    }
+}
+
+void RobotModel::generateMeshColours(const bool single_colour) {
+    pangolin::ColourWheel colours(1.0, 1.0, 1.0);
+    for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
         if(!single_colour) {
             // assign unique colours to meshes
             link_colours[it->first] = colours.GetUniqueColour();

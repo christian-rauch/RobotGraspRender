@@ -44,7 +44,9 @@ public:
     /**
      * @brief renderSetup initialise OpenGL buffer and upload mesh data
      */
-    void renderSetup(const bool single_colour=true);
+    void renderSetup();
+
+    void generateMeshColours(const bool single_colour=true);
 
     void render(pangolin::GlSlProgram &shader);
 

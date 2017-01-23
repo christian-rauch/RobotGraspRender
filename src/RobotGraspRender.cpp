@@ -287,7 +287,8 @@ int main(int /*argc*/, char *argv[]) {
     env->renderSetup();
     obj->renderSetup();
     //robot.renderSetup();
-    robot.generateMeshColours(false);
+    //robot.generateMeshColours(false);
+    robot.generateMeshColours(false, true); // gray channel labels
     robot.renderSetup();
 
     // off-screen buffer

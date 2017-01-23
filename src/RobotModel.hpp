@@ -48,7 +48,7 @@ public:
      */
     void renderSetup();
 
-    void generateMeshColours(const bool single_colour=true);
+    void generateMeshColours(const bool single_colour=true, const bool gray=false);
 
     void render(pangolin::GlSlProgram &shader);
 

@@ -118,11 +118,13 @@ void RobotModel::generateMeshColours(const bool single_colour, const bool gray) 
                 // assign unique colours to meshes
                 link_colours[it->first] = colours.GetUniqueColour();
             }
+            std::cout<<i<<": "<<it->first<<std::endl;
         }
         else {
             link_colours[it->first] = pangolin::Colour::White();
         }
     }
+    std::cout<<"labels: "<<i<<std::endl;
 }
 
 pangolin::OpenGlMatrix RobotModel::getFramePose(const std::string frame) {

@@ -139,6 +139,17 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<std::string> joint_conf_path("joint_config_path");
     pangolin::Var<std::string> joint_name_path("joint_name_path");
 
+    // camera parameters
+    pangolin::Var<std::string> camera_frame("camera_frame");
+    pangolin::Var<uint> cam_width("width");
+    pangolin::Var<uint> cam_height("height");
+    pangolin::Var<uint> centre_x("centre_x");
+    pangolin::Var<uint> centre_y("centre_y");
+    pangolin::Var<double> f_u("f_u");
+    pangolin::Var<double> f_v("f_v");
+    pangolin::Var<double> rotate_z_rad("rotate_z_rad");
+
+    // export flags
     pangolin::Var<bool> save_background("save_background");
     pangolin::Var<bool> save_object("save_object");
     pangolin::Var<bool> save_robot("save_robot");
@@ -198,15 +209,15 @@ int main(int /*argc*/, char *argv[]) {
 
     // robot camera
     // multisense paramters
-    const uint w = 1024;
-    const uint h = 1024;
+    const uint w = cam_width;
+    const uint h = cam_height;
     const double z_near = 0.0001;
     const double z_far = 1000;
     pangolin::OpenGlRenderState robot_cam(
       pangolin::ProjectionMatrix(w, h,  // width x height
-                                 556.183166504, // f_u
-                                 556.183166504, // f_v
-                                 512, 512,      // centre coordinates
+                                 f_u, // f_u
+                                 f_v, // f_v
+                                 centre_x, centre_y,      // centre coordinates
                                  z_near, z_far)
     );
 
@@ -377,7 +388,8 @@ int main(int /*argc*/, char *argv[]) {
         robot_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,0,0,0,0,3,pangolin::AxisY));
 
         // follow relative to camera motion
-        const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePose("left_camera_optical_frame");
+        //const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePose(camera_frame);
+        const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePose(camera_frame)*pangolin::OpenGlMatrix::RotateZ(rotate_z_rad);
         robot_cam.Follow(cam_frame.Inverse());
 
 //        pangolin::glDrawAxis(0.5);

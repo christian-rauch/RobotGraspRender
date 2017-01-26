@@ -225,13 +225,13 @@ int main(int /*argc*/, char *argv[]) {
             .SetAspect(640.0/480.0)
             .SetHandler(new pangolin::Handler3D(s_cam));
     pangolin::View &robot_view = pangolin::Display("robot view")
-            .SetAspect(1024/1024)
+            .SetAspect(w/double(h))
             .SetHandler(new pangolin::Handler3D(robot_cam));
     pangolin::View &depth_view = pangolin::Display("depth")
-        .SetAspect(1024/1024)
+        .SetAspect(w/double(h))
         .SetHandler(new pangolin::Handler3D(robot_cam));
     pangolin::View &label_view = pangolin::Display("labels")
-        .SetAspect(1024/1024)
+        .SetAspect(w/double(h))
         .SetHandler(new pangolin::Handler3D(robot_cam));
 
     pangolin::Display("multi")

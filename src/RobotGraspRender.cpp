@@ -587,7 +587,7 @@ int main(int /*argc*/, char *argv[]) {
             depth_img_vis.Dealloc();
 
             // store depth values in mm as 16bit image
-            cv::Mat depth_img(w, h, CV_16UC1, depth_data_mm.data());
+            cv::Mat depth_img(h, w, CV_16UC1, depth_data_mm.data());
             cv::flip(depth_img, depth_img, 0);
             cv::imwrite(std::string(data_store_path)+"/depth_mm_"+std::to_string(iimg)+".png", depth_img);
 

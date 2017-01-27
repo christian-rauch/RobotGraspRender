@@ -570,9 +570,10 @@ int main(int /*argc*/, char *argv[]) {
             // depth data
             glReadPixels(0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, depth_data.data());
             double tempX, tempY, tempZ;
-            for(double x(0); x<w; x++) {
-                for(double y(0); y<h; y++) {
-                    uint index = uint(x)*w+uint(y);
+            // row-major reading of depth from camera
+            for(double y(0); y<h; y++) {
+                for(double x(0); x<w; x++) {
+                    uint index = uint(y)*w+uint(x);
                     robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[index], tempX, tempY, tempZ);
                     depth_data_mm[index] = tempZ*1000; // mm
                     depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
@@ -588,6 +589,7 @@ int main(int /*argc*/, char *argv[]) {
 
             // store depth values in mm as 16bit image
             cv::Mat depth_img(h, w, CV_16UC1, depth_data_mm.data());
+            // flip around x-axis, origin from top left to bottom left
             cv::flip(depth_img, depth_img, 0);
             cv::imwrite(std::string(data_store_path)+"/depth_mm_"+std::to_string(iimg)+".png", depth_img);
 

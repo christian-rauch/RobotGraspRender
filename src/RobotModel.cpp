@@ -109,19 +109,16 @@ void RobotModel::generateMeshColours(const bool single_colour, const bool gray) 
     pangolin::ColourWheel colours(1.0, 1.0, 1.0);
     uint i = 0;
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
-        if(!single_colour) {
-            i++;
-            if(gray) {
-                link_colours[it->first] = pangolin::Colour(i/256.0, i/256.0, i/256.0, 1.0);
-            }
-            else {
-                // assign unique colours to meshes
-                link_colours[it->first] = colours.GetUniqueColour();
-            }
-            std::cout<<i<<": "<<it->first<<std::endl;
+        if(single_colour) {
+            link_colours[it->first] = pangolin::Colour::White();
         }
         else {
-            link_colours[it->first] = pangolin::Colour::White();
+            // unique colours per link
+            i++;
+            link_label_id[it->first] = i;
+            // set unique gray or rgb colour
+            link_colours[it->first] = (gray) ? pangolin::Colour(i/256.0f, i/256.0f, i/256.0f, 1.0) : colours.GetUniqueColour();
+            std::cout<<i<<": "<<it->first<<std::endl;
         }
     }
     std::cout<<"labels: "<<i<<std::endl;

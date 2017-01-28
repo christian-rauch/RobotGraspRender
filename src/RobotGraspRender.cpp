@@ -245,6 +245,7 @@ int main(int /*argc*/, char *argv[]) {
     ////////////////////////////////////////////////////////////////////////////
     /// Load Resources
 
+    // robot
     RobotModel robot;
     if(!robot_model_path->empty()) {
         robot.parseURDF(robot_model_path);
@@ -252,7 +253,26 @@ int main(int /*argc*/, char *argv[]) {
         robot.loadLinkMeshes();
         // initialising joints and pose
         robot.loadJointNames();
+        //robot.generateMeshColours(false);
+        robot.generateMeshColours(false, true); // gray channel labels
     }
+
+    // export link names and labels
+    if(robot.link_colours.size()!=robot.link_label_id.size())
+        throw std::runtime_error("link label and colour size mismatch");
+
+    std::ofstream link_label_file(std::string(data_store_path)+"/link_label.csv");
+    //link_label_file << "name id r g b"<<std::endl;
+    for(auto it = robot.link_meshes.begin(); it!=robot.link_meshes.end(); it++) {
+        const std::string link_name = it->first;
+        // link name and id (gray value)
+        link_label_file << link_name << " " << robot.link_label_id[link_name];
+        // colour channels
+        link_label_file << " " << robot.link_colours[link_name].r << " " <<robot.link_colours[link_name].g << " " << robot.link_colours[link_name].b;
+        link_label_file << std::endl;
+    }
+    link_label_file.close();
+
 
     // meshes
     MeshPtr env;
@@ -262,8 +282,8 @@ int main(int /*argc*/, char *argv[]) {
     else {
         env = MeshLoader::getMesh(env_path);
     }
-    std::cout<<"env verts: "<<env->vertices.size()<<std::endl;
-    std::cout<<"env faces: "<<env->faces.size()<<std::endl;
+//    std::cout<<"env verts: "<<env->vertices.size()<<std::endl;
+//    std::cout<<"env faces: "<<env->faces.size()<<std::endl;
 
     MeshPtr obj;
     if(obj_path->empty()) {
@@ -272,8 +292,8 @@ int main(int /*argc*/, char *argv[]) {
     else {
         obj = MeshLoader::getMesh(obj_path);
     }
-    std::cout<<"obj verts: "<<obj->vertices.size()<<std::endl;
-    std::cout<<"obj faces: "<<obj->faces.size()<<std::endl;
+//    std::cout<<"obj verts: "<<obj->vertices.size()<<std::endl;
+//    std::cout<<"obj faces: "<<obj->faces.size()<<std::endl;
 
     ////////////////////////////////////////////////////////////////////////////
     /// OpenGL Setup (Shader, Buffer)
@@ -297,9 +317,6 @@ int main(int /*argc*/, char *argv[]) {
     // setup opengl buffers for meshes
     env->renderSetup();
     obj->renderSetup();
-    //robot.renderSetup();
-    //robot.generateMeshColours(false);
-    robot.generateMeshColours(false, true); // gray channel labels
     robot.renderSetup();
 
     // off-screen buffer

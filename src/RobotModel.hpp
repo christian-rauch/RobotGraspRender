@@ -62,6 +62,8 @@ public:
 
     std::map<std::string, pangolin::Colour> link_colours;
 
+    std::map<std::string, uint> link_label_id;
+
     std::map<std::string, float> joints;    // current joint positions
 
     pangolin::OpenGlMatrix T_wr;    // robot pose in world

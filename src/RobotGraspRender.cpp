@@ -268,7 +268,7 @@ int main(int /*argc*/, char *argv[]) {
         // link name and id (gray value)
         link_label_file << link_name << " " << robot.link_label_id[link_name];
         // colour channels
-        link_label_file << " " << robot.link_colours[link_name].r << " " <<robot.link_colours[link_name].g << " " << robot.link_colours[link_name].b;
+        link_label_file << " " << robot.link_colours_rgb[link_name].r << " " <<robot.link_colours_rgb[link_name].g << " " << robot.link_colours_rgb[link_name].b;
         link_label_file << std::endl;
     }
     link_label_file.close();

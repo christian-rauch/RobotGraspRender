@@ -62,6 +62,10 @@ public:
 
     std::map<std::string, pangolin::Colour> link_colours;
 
+    std::map<std::string, pangolin::Colour> link_colours_gray;
+
+    std::map<std::string, pangolin::Colour> link_colours_rgb;
+
     std::map<std::string, uint> link_label_id;
 
     std::map<std::string, float> joints;    // current joint positions

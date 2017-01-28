@@ -117,7 +117,7 @@ void RobotModel::generateMeshColours(const bool single_colour, const bool gray) 
             i++;
             link_label_id[it->first] = i;
             // set unique gray or rgb colour
-            link_colours[it->first] = (gray) ? pangolin::Colour(i/256.0f, i/256.0f, i/256.0f, 1.0) : colours.GetUniqueColour();
+            link_colours[it->first] = (gray) ? pangolin::Colour(i/255.0f, i/255.0f, i/255.0f, 1.0) : colours.GetUniqueColour();
             std::cout<<i<<": "<<it->first<<std::endl;
         }
     }

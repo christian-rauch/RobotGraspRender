@@ -59,40 +59,46 @@ public:
 
     ~CSVjoints() {
         csv_file.close();
-        name_file.close();
     }
 
-    bool open(const std::string &path, const std::string &name_path) {
+    bool open(const std::string &path) {
         csv_file.open(path);
-        name_file.open(name_path);
 
         if(!csv_file.good()) {
             std::cerr<<"error openning joints file: "<<path<<std::endl;
         }
-        if(!name_file.good()) {
-            std::cerr<<"error openning names file: "<<name_path<<std::endl;
-        }
 
-        if(csv_file.fail() || name_file.fail())
+        if(csv_file.fail())
             return false;
 
         return isOpen();
     }
 
     bool isOpen() {
-        return csv_file.is_open() && name_file.is_open();
+        return csv_file.is_open();
     }
 
     void setJointNames() {
         jnames.clear();
-        std::string jname;
+        std::string jname_list;
 
-        while(std::getline(name_file, jname).good()) {
-            jnames.push_back(jname);
+        // joint names in first line of csv file
+        std::getline(csv_file, jname_list);
+
+        std::istringstream iss(jname_list);
+        std::string joint_name;
+        while (std::getline(iss, joint_name, ' ')) {
+            if(!joint_name.empty()) {
+                jnames.push_back(joint_name);
+            }
         }
     }
 
+    // fetch next line of joint values
     std::map<std::string, float> getNext() {
+        if(jnames.size()==0)
+            throw std::runtime_error("joint names not defined");
+
         std::vector<float> jvalues;
 
         std::string val_line;
@@ -100,26 +106,25 @@ public:
             // continue
             std::stringstream ss_line(val_line);
             std::string v;
-            while(std::getline(ss_line, v, ',')) {
+            while(std::getline(ss_line, v, ' ')) {
                 jvalues.push_back(std::stof(v));
             }
         }
 
         std::map<std::string, float> joints;
-        if(jvalues.size()>0) {
+        if(jnames.size()==jvalues.size()) {
             // create named joints
-            if(!(jnames.size() == jvalues.size())) {
-                throw std::runtime_error("joint size does not match");
-            }
             std::transform(jnames.begin(), jnames.end(), jvalues.begin(),
                    std::inserter(joints, joints.end()), std::make_pair<std::string const&, float const&>);
+        }
+        else {
+            throw std::runtime_error("joint size does not match");
         }
         return joints;
     }
 
 private:
     std::ifstream csv_file;
-    std::ifstream name_file;
 
     std::vector<std::string> jnames;
 };
@@ -137,7 +142,6 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<uint> nframes("save_nframes");
     pangolin::Var<std::string> logfile("log_file");
     pangolin::Var<std::string> joint_conf_path("joint_config_path");
-    pangolin::Var<std::string> joint_name_path("joint_name_path");
 
     pangolin::Var<std::string> export_link_poses("export_link_poses");
 
@@ -188,7 +192,7 @@ int main(int /*argc*/, char *argv[]) {
     else {
         // read joints values from csv and quit at end-of-file
         std::cout<<"reading joint config from: "<<joint_conf_path<<std::endl;
-        if(!csvj.open(joint_conf_path, joint_name_path))
+        if(!csvj.open(joint_conf_path))
             std::cerr<<"could not open files"<<std::endl;
         csvj.setJointNames();
     }
@@ -228,6 +232,7 @@ int main(int /*argc*/, char *argv[]) {
         }
     }
 
+    // create files for pose export and write header
     std::map<std::string, std::shared_ptr<std::ofstream>> pose_export_files;
     for(const std::string& link : export_link_pose_names) {
         pose_export_files[link] = std::make_shared<std::ofstream>(std::string(data_store_path)+"/"+link+"_pose.csv");

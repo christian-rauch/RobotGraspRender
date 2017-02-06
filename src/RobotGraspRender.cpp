@@ -117,6 +117,9 @@ public:
             std::transform(jnames.begin(), jnames.end(), jvalues.begin(),
                    std::inserter(joints, joints.end()), std::make_pair<std::string const&, float const&>);
         }
+        else if(jvalues.size()==0) {
+            std::cerr<<"end of file"<<std::endl;
+        }
         else {
             throw std::runtime_error("joint size does not match");
         }
@@ -426,10 +429,13 @@ int main(int /*argc*/, char *argv[]) {
 
         if(csvj.isOpen()) {
             auto jv = csvj.getNext();
-            if(!jv.empty())
+            if(!jv.empty()) {
                 robot.joints = jv;
-            else
+            }
+            else {
+                // end of CSV file
                 return 0;
+            }
         }
 
         // update link/mesh poses

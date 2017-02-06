@@ -156,6 +156,11 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<bool> save_object("save_object");
     pangolin::Var<bool> save_robot("save_robot");
 
+    pangolin::Var<bool> export_colour("export_colour");
+    pangolin::Var<bool> export_depth_viz("export_depth_viz");
+    pangolin::Var<bool> export_depth("export_depth");
+    pangolin::Var<bool> export_label("export_label");
+
     std::cout<<"channel: "<<lcm_channel<<std::endl;
     std::cout<<"robot: "<<robot_model_path<<std::endl;
     std::cout<<"environment: "<<env_path<<std::endl;
@@ -188,14 +193,27 @@ int main(int /*argc*/, char *argv[]) {
         csvj.setJointNames();
     }
 
-    // check and create target directory
-    if(!opendir(std::string(data_store_path).c_str()) && (errno==ENOENT)) {
-        // directory does not exist
-        std::cout<<"creating new directory: "<<std::string(data_store_path)<<std::endl;
-        // S_IRWXU: read+write by owner
-        // S_IRWXG: read+write by group
-        // S_IROTH: read only by others
-        mkdir(std::string(data_store_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    // check and create target directories
+    std::map<std::string, std::string> dir_names; // name, path
+    dir_names["root"] = data_store_path;
+    if(export_colour)
+        dir_names["colour"] = std::string(data_store_path)+"/colour/";
+    if(export_depth_viz)
+        dir_names["depth_viz"] = std::string(data_store_path)+"/depth_viz/";
+    if(export_depth)
+        dir_names["depth"] = std::string(data_store_path)+"/depth/";
+    if(export_label)
+        dir_names["label"] = std::string(data_store_path)+"/label/";
+
+    for(const auto& dir : dir_names) {
+        if(!opendir(std::string(dir.second).c_str()) && (errno==ENOENT)) {
+            // directory does not exist
+            std::cout<<"creating new directory: "<<std::string(dir.second)<<std::endl;
+            // S_IRWXU: read+write by owner
+            // S_IRWXG: read+write by group
+            // S_IROTH: read only by others
+            mkdir(std::string(dir.second).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        }
     }
 
     // read link names for which to export pose
@@ -468,7 +486,7 @@ int main(int /*argc*/, char *argv[]) {
         obj->render(prog);
 
         // off-screen rendering
-        if(store_img) {
+        if(store_img && export_colour) {
             // new view at higher resolution
             glViewport(0,0,w,h);
 
@@ -521,7 +539,7 @@ int main(int /*argc*/, char *argv[]) {
             glReadBuffer(GL_BACK);
             glPixelStorei(GL_PACK_ALIGNMENT, 1);
             glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
-            pangolin::SaveImage(buffer, fmt, std::string(data_store_path)+"/colour_"+std::to_string(iimg)+".png", false);
+            pangolin::SaveImage(buffer, fmt, dir_names["colour"]+"/colour_"+std::to_string(iimg)+".png", false);
             buffer.Dealloc();
 
             // deactivate frame buffer
@@ -564,7 +582,7 @@ int main(int /*argc*/, char *argv[]) {
         obj->render(label_shader);
 
         // off-screen rendering
-        if(store_img) {
+        if(store_img && (export_depth_viz || export_depth || export_label)) {
             // new view at higher resolution
             glViewport(0,0,w,h);
 
@@ -608,41 +626,49 @@ int main(int /*argc*/, char *argv[]) {
 
             glFlush();
 
-            // write image
-            pangolin::Image<unsigned char> buffer;
-            pangolin::PixelFormat fmt = pangolin::PixelFormatFromString("RGB24");
-            buffer.Alloc(w, h, w * fmt.bpp/8 );
-            glReadBuffer(GL_BACK);
-            glPixelStorei(GL_PACK_ALIGNMENT, 1);
-            glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
-            pangolin::SaveImage(buffer, fmt, std::string(data_store_path)+"/label_"+std::to_string(iimg)+".png", false);
-            buffer.Dealloc();
-
-            // depth data
-            glReadPixels(0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, depth_data.data());
-            double tempX, tempY, tempZ;
-            // row-major reading of depth from camera
-            for(double y(0); y<h; y++) {
-                for(double x(0); x<w; x++) {
-                    uint index = uint(y)*w+uint(x);
-                    robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[index], tempX, tempY, tempZ);
-                    depth_data_mm[index] = tempZ*1000; // mm
-                    depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
-                }
+            // write label image
+            if(export_label) {
+                pangolin::Image<unsigned char> buffer;
+                pangolin::PixelFormat fmt = pangolin::PixelFormatFromString("RGB24");
+                buffer.Alloc(w, h, w * fmt.bpp/8 );
+                glReadBuffer(GL_BACK);
+                glPixelStorei(GL_PACK_ALIGNMENT, 1);
+                glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
+                pangolin::SaveImage(buffer, fmt, dir_names["label"]+"/label_"+std::to_string(iimg)+".png", false);
+                buffer.Dealloc();
             }
 
-            pangolin::Image<uint8_t> depth_img_vis;
-            pangolin::PixelFormat depth_fmt = pangolin::PixelFormatFromString("GRAY8");
-            depth_img_vis.Alloc(w, h, w * depth_fmt.bpp/8 );
-            memcpy(depth_img_vis.ptr, depth_data_vis.data(), sizeof(uint8_t)*w*h);
-            pangolin::SaveImage(depth_img_vis, depth_fmt, std::string(data_store_path)+"/depth_"+std::to_string(iimg)+".png", false);
-            depth_img_vis.Dealloc();
+            if(export_depth_viz || export_depth) {
+                // depth data
+                glReadPixels(0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, depth_data.data());
+                double tempX, tempY, tempZ;
+                // row-major reading of depth from camera
+                for(double y(0); y<h; y++) {
+                    for(double x(0); x<w; x++) {
+                        uint index = uint(y)*w+uint(x);
+                        robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[index], tempX, tempY, tempZ);
+                        depth_data_mm[index] = tempZ*1000; // mm
+                        depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
+                    }
+                }
 
-            // store depth values in mm as 16bit image
-            cv::Mat depth_img(h, w, CV_16UC1, depth_data_mm.data());
-            // flip around x-axis, origin from top left to bottom left
-            cv::flip(depth_img, depth_img, 0);
-            cv::imwrite(std::string(data_store_path)+"/depth_mm_"+std::to_string(iimg)+".png", depth_img);
+                if(export_depth_viz) {
+                    pangolin::Image<uint8_t> depth_img_vis;
+                    pangolin::PixelFormat depth_fmt = pangolin::PixelFormatFromString("GRAY8");
+                    depth_img_vis.Alloc(w, h, w * depth_fmt.bpp/8 );
+                    memcpy(depth_img_vis.ptr, depth_data_vis.data(), sizeof(uint8_t)*w*h);
+                    pangolin::SaveImage(depth_img_vis, depth_fmt, dir_names["depth_viz"]+"/depth_viz_"+std::to_string(iimg)+".png", false);
+                    depth_img_vis.Dealloc();
+                }
+
+                if(export_depth) {
+                    // store depth values in mm as 16bit image
+                    cv::Mat depth_img(h, w, CV_16UC1, depth_data_mm.data());
+                    // flip around x-axis, origin from top left to bottom left
+                    cv::flip(depth_img, depth_img, 0);
+                    cv::imwrite(dir_names["depth"]+"/depth_"+std::to_string(iimg)+".png", depth_img);
+                }
+            }
 
             // deactivate frame buffer
             fbo_buffer.Unbind();

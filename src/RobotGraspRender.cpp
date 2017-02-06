@@ -202,7 +202,7 @@ int main(int /*argc*/, char *argv[]) {
 
     // check and create target directories
     std::map<std::string, std::string> dir_names; // name, path
-    dir_names["root"] = data_store_path;
+    dir_names["0"] = data_store_path; // name "0" to create root first
     if(export_colour)
         dir_names["colour"] = std::string(data_store_path)+"/colour/";
     if(export_depth_viz)

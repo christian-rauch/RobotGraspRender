@@ -126,7 +126,7 @@ private:
 
 int main(int /*argc*/, char *argv[]) {
     ////////////////////////////////////////////////////////////////////////////
-    /// Configuration
+    /// Configuration file
     pangolin::ParseVarsFile(argv[1]);
 
     pangolin::Var<std::string> lcm_channel("lcm_channel");
@@ -138,6 +138,8 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<std::string> logfile("log_file");
     pangolin::Var<std::string> joint_conf_path("joint_config_path");
     pangolin::Var<std::string> joint_name_path("joint_name_path");
+
+    pangolin::Var<std::string> export_link_poses("export_link_poses");
 
     // camera parameters
     pangolin::Var<std::string> camera_frame("camera_frame");
@@ -194,6 +196,24 @@ int main(int /*argc*/, char *argv[]) {
         // S_IRWXG: read+write by group
         // S_IROTH: read only by others
         mkdir(std::string(data_store_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    }
+
+    // read link names for which to export pose
+    std::vector<std::string> export_link_pose_names;
+    {
+        std::istringstream iss(export_link_poses);
+        std::string link_name;
+        while (std::getline(iss, link_name, ',')) {
+            // remove whitespace
+            link_name.erase(remove_if(link_name.begin(), link_name.end(), isspace), link_name.end());
+            export_link_pose_names.push_back(link_name);
+        }
+    }
+
+    std::map<std::string, std::shared_ptr<std::ofstream>> pose_export_files;
+    for(const std::string& link : export_link_pose_names) {
+        pose_export_files[link] = std::make_shared<std::ofstream>(std::string(data_store_path)+"/"+link+"_pose.csv");
+        (*pose_export_files[link]) << "px py pz qw qx qy qz" << std::endl;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -253,6 +273,7 @@ int main(int /*argc*/, char *argv[]) {
         robot.loadLinkMeshes();
         // initialising joints and pose
         robot.loadJointNames();
+        robot.camera_frame_name = camera_frame;
         //robot.generateMeshColours(false);
         robot.generateMeshColours(false, true); // gray channel labels
     }
@@ -353,7 +374,6 @@ int main(int /*argc*/, char *argv[]) {
         /// free view
         d_cam.Activate(s_cam);
 
-//        pangolin::glDrawColouredCube();
         pangolin::glDrawAxis(1);
 
         prog.Bind();
@@ -373,7 +393,7 @@ int main(int /*argc*/, char *argv[]) {
         // render environment
         env->render(prog);
 
-        // articulate and render robot
+        // articulate robot
         robot.T_wr = lrs.T_wr;
         if(lcm!=NULL) {
             for(auto kv : lrs.joints) {
@@ -389,12 +409,26 @@ int main(int /*argc*/, char *argv[]) {
                 return 0;
         }
 
+        // update link/mesh poses
+        robot.updateFrames();
+
+        // export hand pose in camera frame
+        for(const std::pair<std::string, std::shared_ptr<std::ofstream>> lf : pose_export_files) {
+            const KDL::Frame link_pose = robot.getLinkPoseInCameraFrame(lf.first);
+            double qx, qy, qz, qw;
+            link_pose.M.GetQuaternion(qx, qy, qz, qw);
+
+            (*lf.second) << link_pose.p.x() << " " << link_pose.p.y() << " " << link_pose.p.z() << " ";
+            (*lf.second) << qw << " " << qx << " " << qy << " " << qz;
+            (*lf.second) << std::endl;
+        }
+
         //robot.render(texture_shader);
         robot.render(label_shader);
 
         // get hand pose from robot and render object at this pose
         prog.Bind();
-        prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+        prog.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
         prog.Unbind();
         obj->render(prog);
 
@@ -406,7 +440,7 @@ int main(int /*argc*/, char *argv[]) {
 
         // follow relative to camera motion
         //const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePose(camera_frame);
-        const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePose(camera_frame)*pangolin::OpenGlMatrix::RotateZ(rotate_z_rad);
+        const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePoseMatrix(robot.camera_frame_name)*pangolin::OpenGlMatrix::RotateZ(rotate_z_rad);
         robot_cam.Follow(cam_frame.Inverse());
 
 //        pangolin::glDrawAxis(0.5);
@@ -429,7 +463,7 @@ int main(int /*argc*/, char *argv[]) {
         robot_cam.Unfollow();
 
         prog.Bind();
-        prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+        prog.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
         prog.Unbind();
         obj->render(prog);
 
@@ -472,7 +506,7 @@ int main(int /*argc*/, char *argv[]) {
 
             if(save_object) {
                 prog.Bind();
-                prog.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+                prog.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
                 prog.Unbind();
                 obj->render(prog);
             }
@@ -524,7 +558,7 @@ int main(int /*argc*/, char *argv[]) {
         robot_cam.Unfollow();
 
         label_shader.Bind();
-        label_shader.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+        label_shader.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
         label_shader.SetUniform("label_colour", pangolin::Colour::Green());
         label_shader.Unbind();
         obj->render(label_shader);
@@ -565,7 +599,7 @@ int main(int /*argc*/, char *argv[]) {
 
             if(save_object) {
                 label_shader.Bind();
-                label_shader.SetUniform("M", robot.T_wr*robot.getFramePose("l_hand_face"));
+                label_shader.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
                 label_shader.SetUniform("label_colour", pangolin::Colour::Green());
                 label_shader.Unbind();
                 obj->render(label_shader);
@@ -616,6 +650,11 @@ int main(int /*argc*/, char *argv[]) {
 
         // draw
         pangolin::FinishFrame();
+    }
+
+    // close pose export files
+    for(const std::pair<std::string, std::shared_ptr<std::ofstream>> lf : pose_export_files) {
+        lf.second->close();
     }
 
     delete lcm;

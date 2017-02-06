@@ -3,6 +3,7 @@
 
 #include <urdf_model/model.h>
 #include <kdl/tree.hpp>
+#include <kdl/frames.hpp>
 #include <kdl/jntarray.hpp>
 
 #include <set>
@@ -24,6 +25,14 @@ private:
 
     std::set<std::string> skipMeshes;
 
+    // link poses in world (OpenGL) frame
+    // this stores poses of all links, not only those with mesh
+    std::map<std::string, pangolin::OpenGlMatrix> link_poses_gl;
+
+    // link poses in camera frame
+    // this stores poses of all links, not only those with mesh
+    std::map<std::string, KDL::Frame> link_poses;
+
 public:
     RobotModel() { }
 
@@ -44,6 +53,11 @@ public:
     void loadJointNames();
 
     /**
+     * @brief updateFrames do FK for all links
+     */
+    void updateFrames();
+
+    /**
      * @brief renderSetup initialise OpenGL buffer and upload mesh data
      */
     void renderSetup();
@@ -56,7 +70,17 @@ public:
 
     void resetSkip() { skipMeshes.clear(); }
 
-    pangolin::OpenGlMatrix getFramePose(const std::string frame);
+    KDL::Frame getFramePose(const std::string& frame);
+
+    pangolin::OpenGlMatrix getFramePoseMatrix(const std::string& frame) {
+        return MatrixFromFrame(getFramePose(frame));
+    }
+
+    pangolin::OpenGlMatrix MatrixFromFrame(const KDL::Frame &frame_pose);
+
+    KDL::Frame& getLinkPoseInCameraFrame(const std::string& link_name) {
+        return link_poses.at(link_name);
+    }
 
     std::map<std::string, MeshPtr> link_meshes;
 
@@ -71,6 +95,8 @@ public:
     std::map<std::string, float> joints;    // current joint positions
 
     pangolin::OpenGlMatrix T_wr;    // robot pose in world
+
+    std::string camera_frame_name;
 };
 
 #endif // ROBOTMODEL_HPP

@@ -66,7 +66,6 @@ void RobotModel::loadLinkMeshes() {
             //
             if(l->visual->geometry->type==urdf::Geometry::MESH) {
                 std::string mesh_path = dynamic_cast<urdf::Mesh*>(&*l->visual->geometry)->filename;
-//                std::cout<<"link: "<<l->name<<" has mesh: "<<mesh_path<<std::endl;
 
                 if(mesh_path.find(PACKAGE_PATH_URI_SCHEME) != std::string::npos) {
                     // we need to replace "package://" by full path
@@ -76,8 +75,6 @@ void RobotModel::loadLinkMeshes() {
                     // prepend full path
                     mesh_path = mesh_package_path + mesh_path;
                 }
-
-                //std::cout<<"link: "<<l->name<<" has mesh: "<<mesh_path<<std::endl;
 
                 link_meshes[l->name] = MeshLoader::getMesh(mesh_path);
             }
@@ -96,6 +93,21 @@ void RobotModel::loadJointNames() {
     // initialise joint map
     for(auto j : urdf_model->joints_) {
         joints[j.first] = 0;
+    }
+}
+
+void RobotModel::updateFrames() {
+    // camera pose in world frame
+    const KDL::Frame camera_pose = getFramePose(camera_frame_name);
+    // get pose of each link
+    for(const auto& s : robot_tree.getSegments()) {
+        const std::string link_name = s.first;
+
+        const KDL::Frame link_pose = getFramePose(link_name);
+        link_poses[link_name] = camera_pose.Inverse()*link_pose;
+
+        const pangolin::OpenGlMatrix M = MatrixFromFrame(link_pose);
+        link_poses_gl[link_name] = M;
     }
 }
 
@@ -126,7 +138,7 @@ void RobotModel::generateMeshColours(const bool single_colour, const bool gray) 
     std::cout<<"labels: "<<i<<std::endl;
 }
 
-pangolin::OpenGlMatrix RobotModel::getFramePose(const std::string frame) {
+KDL::Frame RobotModel::getFramePose(const std::string& frame) {
     // kineamtic chain from root to frame
     KDL::Chain chain;
     robot_tree.getChain(root_frame, frame, chain);
@@ -160,6 +172,10 @@ pangolin::OpenGlMatrix RobotModel::getFramePose(const std::string frame) {
     KDL::Frame frame_pose;
     fk.JntToCart(j, frame_pose);
 
+    return frame_pose;
+}
+
+pangolin::OpenGlMatrix RobotModel::MatrixFromFrame(const KDL::Frame &frame_pose) {
     // model matrix
     pangolin::OpenGlMatrix M;
     M.SetIdentity();
@@ -182,13 +198,15 @@ pangolin::OpenGlMatrix RobotModel::getFramePose(const std::string frame) {
 }
 
 void RobotModel::render(pangolin::GlSlProgram &shader) {
+    // get pose of each link and render mesh
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
+        const std::string link_name = it->first;
 
         // skip meshes that should not be rendered
-        if(skipMeshes.count(it->first))
+        if(skipMeshes.count(link_name))
             continue;
 
-        pangolin::OpenGlMatrix M = getFramePose(it->first);
+        const pangolin::OpenGlMatrix M = link_poses_gl[link_name];
 
         // apply frame transformation to shader
         shader.Bind();

@@ -69,7 +69,25 @@ void Mesh::render(pangolin::GlSlProgram &shader) {
 
     } // texture
     else {
-        pangolin::RenderVboIboCbo(vertexbuffer, elementbuffer, colourbuffer);
+        colourbuffer.Bind();
+        glColorPointer(colourbuffer.count_per_element, colourbuffer.datatype, 0, 0);
+        glEnableClientState(GL_COLOR_ARRAY);
+
+        vertexbuffer.Bind();
+        glVertexPointer(vertexbuffer.count_per_element, vertexbuffer.datatype, 0, 0);
+        glEnableClientState(GL_VERTEX_ARRAY);
+
+        elementbuffer.Bind();
+
+        glDrawElements(GL_TRIANGLES,elementbuffer.num_elements*elementbuffer.count_per_element, elementbuffer.datatype, 0);
+
+        elementbuffer.Unbind();
+
+        glDisableClientState(GL_VERTEX_ARRAY);
+        vertexbuffer.Unbind();
+
+        glDisableClientState(GL_COLOR_ARRAY);
+        colourbuffer.Unbind();
     }
 
     shader.Unbind();

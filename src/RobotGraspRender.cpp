@@ -442,14 +442,16 @@ int main(int /*argc*/, char *argv[]) {
         robot.updateFrames();
 
         // export hand pose in camera frame
-        for(const std::pair<std::string, std::shared_ptr<std::ofstream>> lf : pose_export_files) {
-            const KDL::Frame link_pose = robot.getLinkPoseInCameraFrame(lf.first);
-            double qx, qy, qz, qw;
-            link_pose.M.GetQuaternion(qx, qy, qz, qw);
+        if(store_img) {
+            for(const std::pair<std::string, std::shared_ptr<std::ofstream>> lf : pose_export_files) {
+                const KDL::Frame link_pose = robot.getLinkPoseInCameraFrame(lf.first);
+                double qx, qy, qz, qw;
+                link_pose.M.GetQuaternion(qx, qy, qz, qw);
 
-            (*lf.second) << link_pose.p.x() << " " << link_pose.p.y() << " " << link_pose.p.z() << " ";
-            (*lf.second) << qw << " " << qx << " " << qy << " " << qz;
-            (*lf.second) << std::endl;
+                (*lf.second) << link_pose.p.x() << " " << link_pose.p.y() << " " << link_pose.p.z() << " ";
+                (*lf.second) << qw << " " << qx << " " << qy << " " << qz;
+                (*lf.second) << std::endl;
+            }
         }
 
         //robot.render(texture_shader);

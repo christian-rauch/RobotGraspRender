@@ -71,6 +71,9 @@ target_link_libraries(${PROJECT_NAME} robot_model)
 target_link_libraries(${PROJECT_NAME} ${LCM_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
 
+add_executable(FkPosePublish src/FkPosePublish.cpp)
+target_link_libraries(FkPosePublish ${urdfdom_LIBRARIES} orocos-kdl kdl_parser ${LCM_LIBRARIES})
+
 # install
 install(TARGETS meshloader robot_model kdl_parser LIBRARY DESTINATION lib)  # shared library
 install(DIRECTORY src/ DESTINATION include/${PROJECT_NAME} FILES_MATCHING PATTERN "*.hpp")

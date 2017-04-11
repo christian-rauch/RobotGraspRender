@@ -19,6 +19,7 @@
 class LcmRobotState {
 public:
     std::map<std::string, float> joints;
+    int64_t time;
 
     pangolin::OpenGlMatrix T_wr;
 
@@ -27,6 +28,13 @@ public:
     }
 
     void onRobotState(const lcm::ReceiveBuffer* /*rbuf*/, const std::string& /*channel*/, const bot_core::robot_state_t* msg) {
+        setRobotState(msg);
+    }
+
+    void setRobotState(const bot_core::robot_state_t* msg) {
+        // time stamp in microseconds
+        time = msg->utime;
+
         // joints
         for(uint i(0); i<uint(msg->num_joints); i++) {
             joints[msg->joint_name[i]] = msg->joint_position[i];
@@ -178,26 +186,46 @@ int main(int /*argc*/, char *argv[]) {
     /// I/O Setup
     LcmRobotState lrs;
     lcm::LCM *lcm = NULL;
+    lcm::LogFile *log = NULL;
     CSVjoints csvj;
 
-    if(!std::string(logfile).empty()) {
-        std::cout<<"reading from log file: "<<logfile<<std::endl;
-        lcm = new lcm::LCM("file://"+std::string(logfile));
-    }
-    else {
-        lcm = new lcm::LCM();
-    }
+    // chose from 3 joint value providers:
+    // - CSV file
+    // - LCM log file
+    // - LCM live
 
-    if(std::string(joint_conf_path).empty()) {
-        // no csv, use published robot state
-        lcm->subscribe(lcm_channel, &LcmRobotState::onRobotState, &lrs);
-    }
-    else {
+    if(!std::string(joint_conf_path).empty()) {
         // read joints values from csv and quit at end-of-file
         std::cout<<"reading joint config from: "<<joint_conf_path<<std::endl;
         if(!csvj.open(joint_conf_path))
             std::cerr<<"could not open files"<<std::endl;
         csvj.setJointNames();
+    }
+    else {
+        // use LCM as joint value provider
+        if(!std::string(logfile).empty()) {
+            // read from LCM logfile
+            std::cout<<"reading from log file: "<<logfile<<std::endl;
+            log = new lcm::LogFile(std::string(logfile), "r");
+            if(!log->good()) {
+                std::cerr << "error: reading log file" << std::endl;
+            }
+        }
+        else {
+            // read from live LCM
+            lcm = new lcm::LCM();
+            if(!lcm->good()) {
+                std::cerr << "error: creating LCM" << std::endl;
+            }
+            else {
+                if(!std::string(lcm_channel).empty()) {
+                    lcm->subscribe(lcm_channel, &LcmRobotState::onRobotState, &lrs);
+                }
+                else {
+                    std::cerr << "no LCM channel provided" << std::endl;
+                }
+            }
+        }
     }
 
     // check and create target directories
@@ -241,6 +269,9 @@ int main(int /*argc*/, char *argv[]) {
         pose_export_files[link] = std::make_shared<std::ofstream>(std::string(data_store_path)+"/"+link+"_pose.csv");
         (*pose_export_files[link]) << "px py pz qw qx qy qz" << std::endl;
     }
+
+    // create file for timestamps
+    std::ofstream joint_time(std::string(data_store_path)+"/time.csv");
 
     ////////////////////////////////////////////////////////////////////////////
     /// Window Setup
@@ -391,8 +422,30 @@ int main(int /*argc*/, char *argv[]) {
         if(store_img)
             iimg++;
 
-        if(lcm!=NULL)
+        // handle messages
+        if(lcm!=NULL) {
+            // read live from channel
             lcm->handleTimeout(10);
+        }
+
+        // read event from log file
+        if(log!=NULL) {
+            const lcm::LogEvent *event = NULL;
+            // read log until event with joint channel
+            do {
+                event = log->readNextEvent();
+            } while(event!=NULL && event->channel!=std::string(lcm_channel));
+
+            if(event) {
+                bot_core::robot_state_t state;
+                state.decode(event->data, 0, event->datalen);
+                lrs.setRobotState(&state);
+            }
+            else {
+                std::cout << "end of log" << std::endl;
+                break;
+            }
+        }
 
         // clear colour and depth buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -421,7 +474,8 @@ int main(int /*argc*/, char *argv[]) {
 
         // articulate robot
         robot.T_wr = lrs.T_wr;
-        if(lcm!=NULL) {
+        if(lcm!=NULL || log!=NULL) {
+            joint_time << lrs.time << std::endl;
             for(auto kv : lrs.joints) {
                 robot.joints[kv.first] = kv.second;
             }
@@ -434,7 +488,7 @@ int main(int /*argc*/, char *argv[]) {
             }
             else {
                 // end of CSV file
-                return 0;
+                break;
             }
         }
 
@@ -689,14 +743,17 @@ int main(int /*argc*/, char *argv[]) {
 
         // draw
         pangolin::FinishFrame();
-    }
+    } // pangolin loop
 
     // close pose export files
     for(const std::pair<std::string, std::shared_ptr<std::ofstream>> lf : pose_export_files) {
         lf.second->close();
     }
 
+    joint_time.close();
+
     delete lcm;
+    delete log;
 
     return 0;
 }

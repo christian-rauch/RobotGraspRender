@@ -69,6 +69,14 @@ public:
         csv_file.close();
     }
 
+    /**
+     * @brief removeWhiteSpaces, remove ' ', '\t', '\n', '\v', '\f', '\r' from string
+     * @param joint_name string from which white spaces will be removed
+     */
+    static void removeWhiteSpaces(std::string &joint_name) {
+        joint_name.erase(std::remove_if(joint_name.begin(), joint_name.end(), [](char x){return std::isspace(x);}), joint_name.end());
+    }
+
     bool open(const std::string &path) {
         csv_file.open(path);
 
@@ -97,6 +105,7 @@ public:
         std::string joint_name;
         while (std::getline(iss, joint_name, ' ')) {
             if(!joint_name.empty()) {
+                removeWhiteSpaces(joint_name);
                 jnames.push_back(joint_name);
             }
         }

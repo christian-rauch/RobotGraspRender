@@ -77,11 +77,20 @@ public:
         joint_name.erase(std::remove_if(joint_name.begin(), joint_name.end(), [](char x){return std::isspace(x);}), joint_name.end());
     }
 
-    bool open(const std::string &path) {
-        csv_file.open(path);
+    bool open(const std::string &joints_path, const std::string &timestamps_path) {
+        csv_file.open(joints_path);
+        if(!csv_file.good())
+            std::cerr<<"error openning joints file: "<<joints_path<<std::endl;
 
-        if(!csv_file.good()) {
-            std::cerr<<"error openning joints file: "<<path<<std::endl;
+        if(!timestamps_path.empty()) {
+            timestamps_file.open(timestamps_path);
+            if(!timestamps_file.is_open()) {
+                std::cerr<<"error openning timestamps file: "<<timestamps_path<<std::endl;
+                return false;
+            }
+        }
+        else {
+            std::cout<<"ignoring timestamps"<<std::endl;
         }
 
         if(csv_file.fail())
@@ -112,12 +121,12 @@ public:
     }
 
     // fetch next line of joint values
-    std::map<std::string, float> getNext() {
+    std::tuple<std::map<std::string, float>, int64_t> getNext() {
         if(jnames.size()==0)
             throw std::runtime_error("joint names not defined");
 
+        // joint position values
         std::vector<float> jvalues;
-
         std::string val_line;
         if(std::getline(csv_file, val_line).good()) {
             // continue
@@ -126,6 +135,16 @@ public:
             while(std::getline(ss_line, v, ' ')) {
                 jvalues.push_back(std::stof(v));
             }
+        }
+
+        // timestamps
+        std::string time_line;
+        int64_t timestamp;
+        if(std::getline(timestamps_file, time_line).good()) {
+            timestamp = std::stol(time_line);
+        }
+        else {
+            timestamp = 0;
         }
 
         std::map<std::string, float> joints;
@@ -140,12 +159,12 @@ public:
         else {
             throw std::runtime_error("joint size does not match");
         }
-        return joints;
+        return std::make_tuple(joints, timestamp);
     }
 
 private:
     std::ifstream csv_file;
-
+    std::ifstream timestamps_file;
     std::vector<std::string> jnames;
 };
 
@@ -162,6 +181,7 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<uint> nframes("save_nframes");
     pangolin::Var<std::string> logfile("log_file");
     pangolin::Var<std::string> joint_conf_path("joint_config_path");
+    pangolin::Var<std::string> timestamps_path("timestamps_path");
 
     pangolin::Var<std::string> export_link_poses("export_link_poses");
 
@@ -206,7 +226,7 @@ int main(int /*argc*/, char *argv[]) {
     if(!std::string(joint_conf_path).empty()) {
         // read joints values from csv and quit at end-of-file
         std::cout<<"reading joint config from: "<<joint_conf_path<<std::endl;
-        if(!csvj.open(joint_conf_path))
+        if(!csvj.open(joint_conf_path, timestamps_path))
             std::cerr<<"could not open files"<<std::endl;
         csvj.setJointNames();
     }
@@ -491,9 +511,12 @@ int main(int /*argc*/, char *argv[]) {
         }
 
         if(csvj.isOpen()) {
-            auto jv = csvj.getNext();
+            std::map<std::string, float> jv;
+            int64_t time;
+            std::tie(jv, time) = csvj.getNext();
             if(!jv.empty()) {
                 robot.joints = jv;
+                joint_time << time << std::endl;
             }
             else {
                 // end of CSV file

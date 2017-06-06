@@ -204,6 +204,7 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<bool> export_depth_viz("export_depth_viz");
     pangolin::Var<bool> export_depth("export_depth");
     pangolin::Var<bool> export_label("export_label");
+    pangolin::Var<bool> label_gray("label_gray");
 
     std::cout<<"channel: "<<lcm_channel<<std::endl;
     std::cout<<"robot: "<<robot_model_path<<std::endl;
@@ -360,8 +361,7 @@ int main(int /*argc*/, char *argv[]) {
         // initialising joints and pose
         robot.loadJointNames();
         robot.camera_frame_name = camera_frame;
-        //robot.generateMeshColours(false);
-        robot.generateMeshColours(false, true); // gray channel labels
+        robot.generateMeshColours(false, label_gray);
     }
 
     // export link names and labels

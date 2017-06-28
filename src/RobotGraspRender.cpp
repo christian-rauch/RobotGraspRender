@@ -168,11 +168,36 @@ private:
     std::vector<std::string> jnames;
 };
 
+// conversion from string to matrix
+template<typename T>
+void deserialise_matrix(const std::string &mat_string, Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> &M) {
+    std::stringstream mat_ss(mat_string);
+    std::string row;
+    uint irow = 0;
+    while(std::getline(mat_ss,row,',')) {
+        M.conservativeResize(irow+1, Eigen::NoChange);
+        std::stringstream row_ss(row);
+        uint icol = 0;
+        std::string v;
+        while(std::getline(row_ss,v, ' ')) {
+            if(v.size()!=0) {
+                if(irow==0) {
+                    M.conservativeResize(Eigen::NoChange, icol+1);
+                }
+                std::stringstream(v) >> M(irow,icol);
+                icol++;
+            }
+        }
+        irow++;
+    }
+}
+
 int main(int /*argc*/, char *argv[]) {
     ////////////////////////////////////////////////////////////////////////////
     /// Configuration file
     pangolin::ParseVarsFile(argv[1]);
 
+    // data source parameters
     pangolin::Var<std::string> lcm_channel("lcm_channel");
     pangolin::Var<std::string> env_path("environment_mesh");
     pangolin::Var<std::string> obj_path("object_mesh");
@@ -183,7 +208,19 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<std::string> joint_conf_path("joint_config_path");
     pangolin::Var<std::string> timestamps_path("timestamps_path");
 
-    pangolin::Var<std::string> export_link_poses("export_link_poses");
+    pangolin::Var<std::string> grasp_frame("grasp_frame");
+
+    pangolin::Var<std::string> opose_string("object_pose");
+    pangolin::OpenGlMatrix object_pose;
+    if(std::string(opose_string).size()>0) {
+        Eigen::MatrixXf mx;
+        deserialise_matrix<float>(opose_string, mx);
+        const Eigen::Matrix4f m4(mx);
+        object_pose = pangolin::OpenGlMatrix(m4);
+    }
+    else {
+        object_pose.SetIdentity();
+    }
 
     // camera parameters
     pangolin::Var<std::string> camera_frame("camera_frame");
@@ -205,6 +242,8 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<bool> export_depth("export_depth");
     pangolin::Var<bool> export_label("export_label");
     pangolin::Var<bool> label_gray("label_gray");
+
+    pangolin::Var<std::string> export_link_poses("export_link_poses");
 
     std::cout<<"channel: "<<lcm_channel<<std::endl;
     std::cout<<"robot: "<<robot_model_path<<std::endl;
@@ -543,9 +582,11 @@ int main(int /*argc*/, char *argv[]) {
         //robot.render(texture_shader);
         robot.render(label_shader);
 
+        const pangolin::OpenGlMatrix T_po = object_pose;
+
         // get hand pose from robot and render object at this pose
         prog.Bind();
-        prog.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
+        prog.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix(grasp_frame)*T_po);
         prog.Unbind();
         obj->render(prog);
 
@@ -580,7 +621,7 @@ int main(int /*argc*/, char *argv[]) {
         robot_cam.Unfollow();
 
         prog.Bind();
-        prog.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
+        prog.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix(grasp_frame)*T_po);
         prog.Unbind();
         obj->render(prog);
 
@@ -623,7 +664,7 @@ int main(int /*argc*/, char *argv[]) {
 
             if(save_object) {
                 prog.Bind();
-                prog.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
+                prog.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix(grasp_frame)*T_po);
                 prog.Unbind();
                 obj->render(prog);
             }
@@ -675,7 +716,7 @@ int main(int /*argc*/, char *argv[]) {
         robot_cam.Unfollow();
 
         label_shader.Bind();
-        label_shader.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
+        label_shader.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix(grasp_frame)*T_po);
         label_shader.SetUniform("label_colour", pangolin::Colour::Green());
         label_shader.Unbind();
         obj->render(label_shader);
@@ -716,7 +757,7 @@ int main(int /*argc*/, char *argv[]) {
 
             if(save_object) {
                 label_shader.Bind();
-                label_shader.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix("l_hand_face"));
+                label_shader.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix(grasp_frame)*T_po);
                 label_shader.SetUniform("label_colour", pangolin::Colour::Green());
                 label_shader.Unbind();
                 obj->render(label_shader);

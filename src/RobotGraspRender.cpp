@@ -232,6 +232,15 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<double> f_v("f_v");
     pangolin::Var<double> rotate_z_rad("rotate_z_rad");
 
+    const pangolin::Var<std::string> cpose_string("camera_pose");
+    pangolin::OpenGlMatrix camera_pose;
+    if(std::string(cpose_string).size()>0) {
+        Eigen::MatrixXf mx;
+        deserialise_matrix<float>(cpose_string, mx);
+        const Eigen::Matrix4f m4(mx);
+        camera_pose = pangolin::OpenGlMatrix(m4);
+    }
+
     // export flags
     pangolin::Var<bool> save_background("save_background");
     pangolin::Var<bool> save_object("save_object");
@@ -521,7 +530,11 @@ int main(int /*argc*/, char *argv[]) {
         /// free view
         d_cam.Activate(s_cam);
 
+        // world frame
         pangolin::glDrawAxis(1);
+
+        // camera frame
+        pangolin::glDrawAxis(camera_pose, 0.3);
 
         prog.Bind();
         prog.SetUniform("MVP", s_cam.GetProjectionModelViewMatrix());
@@ -596,9 +609,13 @@ int main(int /*argc*/, char *argv[]) {
         // coordinates in camera frame: look from origin in Z-direction
         robot_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,0,0,0,0,3,pangolin::AxisY));
 
+        // set camera frame from robot kinematic chain if not provided from variable 'camera_pose'
+        if(!(std::string(cpose_string).size()>0)) {
+            camera_pose = robot.T_wr*robot.getFramePoseMatrix(robot.camera_frame_name);
+        }
+        const pangolin::OpenGlMatrix cam_frame = camera_pose*pangolin::OpenGlMatrix::RotateZ(rotate_z_rad);
+
         // follow relative to camera motion
-        //const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePose(camera_frame);
-        const pangolin::OpenGlMatrix cam_frame = robot.T_wr*robot.getFramePoseMatrix(robot.camera_frame_name)*pangolin::OpenGlMatrix::RotateZ(rotate_z_rad);
         robot_cam.Follow(cam_frame.Inverse());
 
 //        pangolin::glDrawAxis(0.5);

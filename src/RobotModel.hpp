@@ -76,7 +76,7 @@ public:
         return MatrixFromFrame(getFramePose(frame));
     }
 
-    pangolin::OpenGlMatrix MatrixFromFrame(const KDL::Frame &frame_pose);
+    static pangolin::OpenGlMatrix MatrixFromFrame(const KDL::Frame &frame_pose);
 
     KDL::Frame& getLinkPoseInCameraFrame(const std::string& link_name) {
         return link_poses.at(link_name);

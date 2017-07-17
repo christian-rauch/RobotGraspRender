@@ -234,10 +234,12 @@ int main(int /*argc*/, char *argv[]) {
 
     const pangolin::Var<std::string> cpose_string("camera_pose");
     pangolin::OpenGlMatrix camera_pose;
+    Eigen::Isometry3f cam_pose_iso3;
     if(std::string(cpose_string).size()>0) {
         Eigen::MatrixXf mx;
         deserialise_matrix<float>(cpose_string, mx);
         const Eigen::Matrix4f m4(mx);
+        cam_pose_iso3 = m4;
         camera_pose = pangolin::OpenGlMatrix(m4);
     }
 
@@ -579,13 +581,38 @@ int main(int /*argc*/, char *argv[]) {
         // update link/mesh poses
         robot.updateFrames();
 
-        // export hand pose in camera frame
+        // show coordinate axis of exported frames
+        for(const std::string& link : export_link_pose_names) {
+            const pangolin::OpenGlMatrix frame_pose = robot.T_wr*robot.getFramePoseMatrix(link);
+            pangolin::glDrawAxis(frame_pose, 0.3);
+        }
+
+        // export link pose in camera frame
         if(store_img) {
             for(const std::pair<std::string, std::shared_ptr<std::ofstream>> lf : pose_export_files) {
-                const KDL::Frame link_pose = robot.getLinkPoseInCameraFrame(lf.first);
+                KDL::Frame link_pose = robot.getLinkPoseInCameraFrame(lf.first);
+
+                if(std::string(cpose_string).size()>0) {
+                    // expressed in base frame
+                    // if variable 'camera_pose' is given, we assume that it is
+                    // not part of the kinematic chain and 'link_pose' is the
+                    // pose of the link frame in the base frame
+
+                    KDL::Frame camera_pose;
+                    camera_pose.p = KDL::Vector(cam_pose_iso3.translation().x(), cam_pose_iso3.translation().y(), cam_pose_iso3.translation().z());
+                    camera_pose.M = KDL::Rotation::Quaternion(Eigen::Quaternionf(cam_pose_iso3.rotation()).x(),
+                                                              Eigen::Quaternionf(cam_pose_iso3.rotation()).y(),
+                                                              Eigen::Quaternionf(cam_pose_iso3.rotation()).z(),
+                                                              Eigen::Quaternionf(cam_pose_iso3.rotation()).w()); //xyzw
+
+                    const KDL::Frame Tcp = camera_pose.Inverse() * link_pose;
+
+                    // express link_pose in camera frame
+                    link_pose = Tcp;
+                }
+
                 double qx, qy, qz, qw;
                 link_pose.M.GetQuaternion(qx, qy, qz, qw);
-
                 (*lf.second) << link_pose.p.x() << " " << link_pose.p.y() << " " << link_pose.p.z() << " ";
                 (*lf.second) << qw << " " << qx << " " << qy << " " << qz;
                 (*lf.second) << std::endl;

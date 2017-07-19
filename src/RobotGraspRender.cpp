@@ -365,7 +365,6 @@ int main(int /*argc*/, char *argv[]) {
     );
 
     // robot camera
-    // multisense paramters
     const uint w = cam_width;
     const uint h = cam_height;
     const double z_near = 0.0001;
@@ -377,6 +376,10 @@ int main(int /*argc*/, char *argv[]) {
                                  centre_x, centre_y,      // centre coordinates
                                  z_near, z_far)
     );
+
+    // replace invalid depth values
+    const double depth_cutoff = 20; // meter
+    const uint depth_max_export_mm = 16384; // mm
 
     pangolin::View &d_cam = pangolin::Display("free view")
             .SetAspect(640.0/480.0)
@@ -831,8 +834,8 @@ int main(int /*argc*/, char *argv[]) {
                     for(double x(0); x<w; x++) {
                         uint index = uint(y)*w+uint(x);
                         robot_view.GetObjectCoordinates(robot_cam, x, y, depth_data[index], tempX, tempY, tempZ);
-                        depth_data_mm[index] = tempZ*1000; // mm
-                        depth_data_vis[index] = tempZ /2 * 255; // 2m = 255
+                        depth_data_mm[index]  = (tempZ>depth_cutoff) ? depth_max_export_mm : tempZ*1000; // mm
+                        depth_data_vis[index] = (tempZ>depth_cutoff) ? 0 : tempZ /2 * 255; // 2m = 255
                     }
                 }
 

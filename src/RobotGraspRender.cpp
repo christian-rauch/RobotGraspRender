@@ -418,7 +418,7 @@ int main(int /*argc*/, char *argv[]) {
     }
 
     // export link names and labels
-    if(robot.link_colours.size()!=robot.link_label_id.size())
+    if(robot.link_label_colours.size()!=robot.link_label_id.size())
         throw std::runtime_error("link label and colour size mismatch");
 
     std::ofstream link_label_file(std::string(data_store_path)+"/link_label.csv");
@@ -428,7 +428,7 @@ int main(int /*argc*/, char *argv[]) {
         // link name and id (gray value)
         link_label_file << link_name << " " << robot.link_label_id[link_name];
         // colour channels
-        link_label_file << " " << robot.link_colours_rgb[link_name].r << " " <<robot.link_colours_rgb[link_name].g << " " << robot.link_colours_rgb[link_name].b;
+        link_label_file << " " << robot.link_label_colours_rgb[link_name].r << " " <<robot.link_label_colours_rgb[link_name].g << " " << robot.link_label_colours_rgb[link_name].b;
         link_label_file << std::endl;
     }
     link_label_file.close();

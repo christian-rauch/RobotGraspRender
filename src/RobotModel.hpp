@@ -64,7 +64,12 @@ public:
 
     void generateMeshColours(const bool single_colour=true, const bool gray=false);
 
-    void render(pangolin::GlSlProgram &shader);
+    /**
+     * @brief render render the whole robot with the provided share
+     * @param shader shader (texture, colour, ...)
+     * @param link_colour true: use the original link colour, false: use label colour
+     */
+    void render(pangolin::GlSlProgram &shader, const bool link_colour = true);
 
     void addSkip(const std::string& link) { skipMeshes.insert(link); }
 
@@ -84,11 +89,14 @@ public:
 
     std::map<std::string, MeshPtr> link_meshes;
 
+    std::map<std::string, pangolin::Colour> link_label_colours;
+
+    std::map<std::string, pangolin::Colour> link_label_colours_gray;
+
+    std::map<std::string, pangolin::Colour> link_label_colours_rgb;
+
+    // original link colour as given by the URDF
     std::map<std::string, pangolin::Colour> link_colours;
-
-    std::map<std::string, pangolin::Colour> link_colours_gray;
-
-    std::map<std::string, pangolin::Colour> link_colours_rgb;
 
     std::map<std::string, uint> link_label_id;
 

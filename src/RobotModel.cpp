@@ -78,6 +78,14 @@ void RobotModel::loadLinkMeshes() {
 
                 link_meshes[l->name] = MeshLoader::getMesh(mesh_path);
             }
+
+            if(l->visual->material!=NULL){
+                const urdf::Color colour = l->visual->material->color;
+                link_colours[l->name].r = colour.r;
+                link_colours[l->name].g = colour.g;
+                link_colours[l->name].b = colour.b;
+                link_colours[l->name].a = colour.a;
+            }
         }
     }
 }
@@ -122,19 +130,19 @@ void RobotModel::generateMeshColours(const bool single_colour, const bool gray) 
     uint i = 0;
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
         if(single_colour) {
-            link_colours[it->first] = pangolin::Colour::White();
+            link_label_colours[it->first] = pangolin::Colour::White();
         }
         else {
             // unique colours per link
             i++;
             link_label_id[it->first] = i;
             // set unique gray level
-            link_colours_gray[it->first] = pangolin::Colour(i/255.0f, i/255.0f, i/255.0f, 1.0);
+            link_label_colours_gray[it->first] = pangolin::Colour(i/255.0f, i/255.0f, i/255.0f, 1.0);
             // set unique rgb colour
-            link_colours_rgb[it->first] = colours.GetUniqueColour();
+            link_label_colours_rgb[it->first] = colours.GetUniqueColour();
         }
     }
-    link_colours = gray ? link_colours_gray : link_colours_rgb;
+    link_label_colours = gray ? link_label_colours_gray : link_label_colours_rgb;
     std::cout<<"labels: "<<i<<std::endl;
 }
 
@@ -197,7 +205,7 @@ pangolin::OpenGlMatrix RobotModel::MatrixFromFrame(const KDL::Frame &frame_pose)
     return M;
 }
 
-void RobotModel::render(pangolin::GlSlProgram &shader) {
+void RobotModel::render(pangolin::GlSlProgram &shader, const bool link_colour) {
     // get pose of each link and render mesh
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
         const std::string link_name = it->first;
@@ -211,8 +219,16 @@ void RobotModel::render(pangolin::GlSlProgram &shader) {
         // apply frame transformation to shader
         shader.Bind();
         shader.SetUniform("M", T_wr*M);
-        if(!link_colours.empty()) {
+        if(link_colour) {
             shader.SetUniform("label_colour", link_colours[it->first]);
+        }
+        else {
+            if(!link_label_colours.empty()) {
+                shader.SetUniform("label_colour", link_label_colours[it->first]);
+            }
+            else {
+                throw std::runtime_error("requested to render label colours, but none are given");
+            }
         }
         shader.Unbind();
 

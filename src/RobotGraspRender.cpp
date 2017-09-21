@@ -532,6 +532,9 @@ int main(int /*argc*/, char *argv[]) {
         // clear colour and depth buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // set background colour
+//        glClearColor(0.5, 0.5, 0.5, 1);
+
         /// free view
         d_cam.Activate(s_cam);
 
@@ -622,8 +625,8 @@ int main(int /*argc*/, char *argv[]) {
             }
         }
 
-        //robot.render(texture_shader);
-        robot.render(label_shader);
+        // render actual robot
+        robot.render(label_shader, true);
 
         const pangolin::OpenGlMatrix T_po = object_pose;
 
@@ -662,7 +665,8 @@ int main(int /*argc*/, char *argv[]) {
         env->render(prog);
 
         robot.addSkip("upperNeckPitchLink");
-        robot.render(texture_shader);
+        //robot.render(texture_shader);
+        robot.render(label_shader);
         robot.resetSkip();
 
         robot_cam.Unfollow();
@@ -703,7 +707,8 @@ int main(int /*argc*/, char *argv[]) {
 
             if(save_robot) {
                 robot.addSkip("upperNeckPitchLink");
-                robot.render(texture_shader);
+                //robot.render(texture_shader);
+                robot.render(label_shader, true);
                 robot.resetSkip();
             }
 
@@ -757,7 +762,7 @@ int main(int /*argc*/, char *argv[]) {
         label_shader.SetUniform("label_colour", pangolin::Colour::Red());
         label_shader.Unbind();
         robot.addSkip("upperNeckPitchLink");
-        robot.render(label_shader);
+        robot.render(label_shader, false);
         robot.resetSkip();
 
         robot_cam.Unfollow();
@@ -796,7 +801,7 @@ int main(int /*argc*/, char *argv[]) {
                 label_shader.SetUniform("label_colour", pangolin::Colour::Red());
                 label_shader.Unbind();
                 robot.addSkip("upperNeckPitchLink");
-                robot.render(label_shader);
+                robot.render(label_shader, false);
                 robot.resetSkip();
             }
 

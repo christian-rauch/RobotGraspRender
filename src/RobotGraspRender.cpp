@@ -664,6 +664,13 @@ int main(int /*argc*/, char *argv[]) {
 
         env->render(prog);
 
+        label_shader.Bind();
+        label_shader.SetUniform("MVP", robot_cam.GetProjectionModelViewMatrix());
+        I.SetIdentity();
+        label_shader.SetUniform("M", I);
+        label_shader.SetUniform("label_colour", pangolin::Colour::Blue());
+        label_shader.Unbind();
+
         robot.addSkip("upperNeckPitchLink");
         //robot.render(texture_shader);
         robot.render(label_shader);

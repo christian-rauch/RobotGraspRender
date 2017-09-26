@@ -2,7 +2,12 @@ cmake_minimum_required(VERSION 2.8)
 project(RobotGraspRender)
 
 # turn on c++11
-add_definitions(-std=c++11)
+#add_definitions(-std=c++11)
+# turn on c++17
+add_definitions(-std=c++17)
+
+# deactivate some warnings
+add_definitions ("-Wno-ignored-attributes -Wno-deprecated-declarations")
 
 set(BUILD_SHARED_LIBS true)
 
@@ -23,10 +28,6 @@ include_directories(${orocos_kdl_INCLUDE_DIRS})
 # URDF
 find_package(urdfdom REQUIRED)
 include_directories(${urdfdom_INCLUDE_DIRS})
-
-# Boost filesystem
-find_package(Boost REQUIRED filesystem system)
-include_directories(${Boost_INCLUDE_DIRS})
 
 # LCM
 pkg_check_modules(LCM REQUIRED lcm)
@@ -60,7 +61,7 @@ add_library(robot_model src/RobotModel.cpp)
 target_link_libraries(robot_model orocos-kdl)
 target_link_libraries(robot_model ${urdfdom_LIBRARIES})
 target_link_libraries(robot_model kdl_parser)
-target_link_libraries(robot_model ${Boost_LIBRARIES})
+target_link_libraries(robot_model stdc++fs)
 
 
 # define executable
@@ -70,6 +71,7 @@ target_link_libraries(${PROJECT_NAME} meshloader)
 target_link_libraries(${PROJECT_NAME} robot_model)
 target_link_libraries(${PROJECT_NAME} ${LCM_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} random_object)
 
 add_executable(FkPosePublish src/FkPosePublish.cpp)
 target_link_libraries(FkPosePublish ${urdfdom_LIBRARIES} orocos-kdl kdl_parser ${LCM_LIBRARIES})

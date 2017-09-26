@@ -3,33 +3,35 @@
 #include <urdf_parser/urdf_parser.h>
 #include <kdl_parser.hpp>
 
-#include <boost/filesystem.hpp>
+#include <experimental/filesystem>
 
 #include <kdl/chainfksolverpos_recursive.hpp>
 
 #define PACKAGE_PATH_URI_SCHEME "package://"
 
+namespace fs = std::experimental::filesystem;
+
 // find the file "package.xml" for obtaining the root folder of our mesh
 std::string getROSPackagePath(const std::string &start_path,
                               const std::string ros_package_path_file = "package.xml")
 {
-    boost::filesystem::path fpath = boost::filesystem::canonical(start_path);
+    fs::path fpath = fs::canonical(start_path);
 
     // search backwards for package path, e.g. directory that contains the package file
-    while(fpath.has_parent_path() && !boost::filesystem::is_regular_file(fpath / ros_package_path_file)) {
+    while(fpath.has_parent_path() && !fs::is_regular_file(fpath / ros_package_path_file)) {
         // go one step backward closer to root
         fpath = fpath.parent_path();
     }
 
     std::string package_path = "";
-    if(!boost::filesystem::is_regular_file(fpath / ros_package_path_file)) {
+    if(!fs::is_regular_file(fpath / ros_package_path_file)) {
         // package path not found, use relative path
-        package_path = boost::filesystem::canonical(start_path).parent_path().native()
-                + boost::filesystem::path::preferred_separator;
+        package_path = fs::canonical(start_path).parent_path().native()
+                + fs::path::preferred_separator;
     }
     else {
         // store package path with trailing directory seperator
-        package_path = fpath.branch_path().native() + boost::filesystem::path::preferred_separator;
+        package_path = fpath.parent_path().native() + fs::path::preferred_separator;
     }
     return package_path;
 }

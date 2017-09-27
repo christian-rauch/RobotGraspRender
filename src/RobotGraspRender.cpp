@@ -16,6 +16,10 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include <experimental/filesystem>
+
+namespace fs = std::experimental::filesystem;
+
 class LcmRobotState {
 public:
     std::map<std::string, float> joints;
@@ -311,6 +315,7 @@ int main(int /*argc*/, char *argv[]) {
     }
 
     // check and create target directories
+    // TODO: replace by C++17 filesystem
     std::map<std::string, std::string> dir_names; // name, path
     dir_names["0"] = data_store_path; // name "0" to create root first
     if(export_colour)
@@ -331,25 +336,6 @@ int main(int /*argc*/, char *argv[]) {
             // S_IROTH: read only by others
             mkdir(std::string(dir.second).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         }
-    }
-
-    // read link names for which to export pose
-    std::vector<std::string> export_link_pose_names;
-    {
-        std::istringstream iss(export_link_poses);
-        std::string link_name;
-        while (std::getline(iss, link_name, ',')) {
-            // remove whitespace
-            link_name.erase(remove_if(link_name.begin(), link_name.end(), isspace), link_name.end());
-            export_link_pose_names.push_back(link_name);
-        }
-    }
-
-    // create files for pose export and write header
-    std::map<std::string, std::shared_ptr<std::ofstream>> pose_export_files;
-    for(const std::string& link : export_link_pose_names) {
-        pose_export_files[link] = std::make_shared<std::ofstream>(std::string(data_store_path)+"/"+link+"_pose.csv");
-        (*pose_export_files[link]) << "px py pz qw qx qy qz" << std::endl;
     }
 
     // create file for timestamps
@@ -436,6 +422,42 @@ int main(int /*argc*/, char *argv[]) {
         link_label_file << std::endl;
     }
     link_label_file.close();
+
+    // read link names for which to export pose
+    std::vector<std::string> export_link_pose_names;
+    if(export_link_poses.Get() == "all") {
+        // export all links
+        for(const auto& li : robot.link_label_id) {
+            export_link_pose_names.push_back(li.first);
+        }
+    }
+    else {
+        std::istringstream iss(export_link_poses);
+        std::string link_name;
+        while (std::getline(iss, link_name, ',')) {
+            // remove whitespace
+            link_name.erase(remove_if(link_name.begin(), link_name.end(), isspace), link_name.end());
+            export_link_pose_names.push_back(link_name);
+        }
+    }
+
+    // create files for pose export and write header
+    const fs::path pose_path = fs::path(data_store_path.Get())/fs::path("frame_pose");
+    fs::create_directories(pose_path);
+    std::map<std::string, std::shared_ptr<std::ofstream>> pose_export_files;
+    for(const std::string& link : export_link_pose_names) {
+        pose_export_files[link] = std::make_shared<std::ofstream>(pose_path/fs::path(link+"_pose.csv"));
+        (*pose_export_files[link]) << "px py pz qw qx qy qz" << std::endl;
+    }
+
+    // create files for joint 2D position export and write header
+    const fs::path joint_pos_path = fs::path(data_store_path.Get())/fs::path("joint_pos");
+    fs::create_directories(joint_pos_path);
+    std::map<std::string, std::shared_ptr<std::ofstream>> joint_pos_export_files;
+    for(const std::string& link : export_link_pose_names) {
+        joint_pos_export_files[link] = std::make_shared<std::ofstream>(joint_pos_path/fs::path(link+"_2Dpos.csv"));
+        (*joint_pos_export_files[link]) << "x y" << std::endl;
+    }
 
 
     // meshes
@@ -604,38 +626,6 @@ int main(int /*argc*/, char *argv[]) {
         for(const std::string& link : export_link_pose_names) {
             const pangolin::OpenGlMatrix frame_pose = robot.T_wr*robot.getFramePoseMatrix(link);
             pangolin::glDrawAxis(frame_pose, 0.3);
-        }
-
-        // export link pose in camera frame
-        if(store_img) {
-            for(const std::pair<std::string, std::shared_ptr<std::ofstream>> lf : pose_export_files) {
-                KDL::Frame link_pose = robot.getLinkPoseInCameraFrame(lf.first);
-
-                if(std::string(cpose_string).size()>0) {
-                    // expressed in base frame
-                    // if variable 'camera_pose' is given, we assume that it is
-                    // not part of the kinematic chain and 'link_pose' is the
-                    // pose of the link frame in the base frame
-
-                    KDL::Frame camera_pose;
-                    camera_pose.p = KDL::Vector(cam_pose_iso3.translation().x(), cam_pose_iso3.translation().y(), cam_pose_iso3.translation().z());
-                    camera_pose.M = KDL::Rotation::Quaternion(Eigen::Quaternionf(cam_pose_iso3.rotation()).x(),
-                                                              Eigen::Quaternionf(cam_pose_iso3.rotation()).y(),
-                                                              Eigen::Quaternionf(cam_pose_iso3.rotation()).z(),
-                                                              Eigen::Quaternionf(cam_pose_iso3.rotation()).w()); //xyzw
-
-                    const KDL::Frame Tcp = camera_pose.Inverse() * link_pose;
-
-                    // express link_pose in camera frame
-                    link_pose = Tcp;
-                }
-
-                double qx, qy, qz, qw;
-                link_pose.M.GetQuaternion(qx, qy, qz, qw);
-                (*lf.second) << link_pose.p.x() << " " << link_pose.p.y() << " " << link_pose.p.z() << " ";
-                (*lf.second) << qw << " " << qx << " " << qy << " " << qz;
-                (*lf.second) << std::endl;
-            }
         }
 
         // render actual robot
@@ -884,6 +874,42 @@ int main(int /*argc*/, char *argv[]) {
 
             // deactivate frame buffer
             fbo_buffer.Unbind();
+
+            // export link pose in camera frame
+            for(const std::string& link_name : export_link_pose_names) {
+                KDL::Frame link_pose = robot.getLinkPoseInCameraFrame(link_name);
+
+                if(std::string(cpose_string).size()>0) {
+                    // expressed in base frame
+                    // if variable 'camera_pose' is given, we assume that it is
+                    // not part of the kinematic chain and 'link_pose' is the
+                    // pose of the link frame in the base frame
+
+                    KDL::Frame camera_pose;
+                    camera_pose.p = KDL::Vector(cam_pose_iso3.translation().x(), cam_pose_iso3.translation().y(), cam_pose_iso3.translation().z());
+                    camera_pose.M = KDL::Rotation::Quaternion(Eigen::Quaternionf(cam_pose_iso3.rotation()).x(),
+                                                              Eigen::Quaternionf(cam_pose_iso3.rotation()).y(),
+                                                              Eigen::Quaternionf(cam_pose_iso3.rotation()).z(),
+                                                              Eigen::Quaternionf(cam_pose_iso3.rotation()).w()); //xyzw
+
+                    const KDL::Frame Tcp = camera_pose.Inverse() * link_pose;
+
+                    // express link_pose in camera frame
+                    link_pose = Tcp;
+                }
+
+                // 6D frame pose in camera frame
+                double qx, qy, qz, qw;
+                link_pose.M.GetQuaternion(qx, qy, qz, qw);
+                (*pose_export_files[link_name]) << link_pose.p.x() << " " << link_pose.p.y() << " " << link_pose.p.z() << " ";
+                (*pose_export_files[link_name]) << qw << " " << qx << " " << qy << " " << qz;
+                (*pose_export_files[link_name]) << std::endl;
+
+                // 2D frame position in image plane
+                const double wx = centre_x + link_pose.p.x() * f_u;
+                const double wy = centre_y + link_pose.p.y() * f_v;
+                (*joint_pos_export_files[link_name]) << wx << " " << wy << std::endl;
+            } // frame pose export
         }
 
         // draw

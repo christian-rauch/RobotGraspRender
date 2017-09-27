@@ -69,9 +69,11 @@ void Mesh::render(pangolin::GlSlProgram &shader) {
 
     } // texture
     else {
-        colourbuffer.Bind();
-        glColorPointer(colourbuffer.count_per_element, colourbuffer.datatype, 0, 0);
-        glEnableClientState(GL_COLOR_ARRAY);
+        if(hasColour()) {
+            colourbuffer.Bind();
+            glColorPointer(colourbuffer.count_per_element, colourbuffer.datatype, 0, 0);
+            glEnableClientState(GL_COLOR_ARRAY);
+        }
 
         vertexbuffer.Bind();
         glVertexPointer(vertexbuffer.count_per_element, vertexbuffer.datatype, 0, 0);
@@ -86,8 +88,10 @@ void Mesh::render(pangolin::GlSlProgram &shader) {
         glDisableClientState(GL_VERTEX_ARRAY);
         vertexbuffer.Unbind();
 
-        glDisableClientState(GL_COLOR_ARRAY);
-        colourbuffer.Unbind();
+        if(hasColour()) {
+            glDisableClientState(GL_COLOR_ARRAY);
+            colourbuffer.Unbind();
+        }
     }
 
     shader.Unbind();

@@ -1,8 +1,8 @@
 #include <pangolin/pangolin.h>
 
 #include <MeshLoader.hpp>
-
 #include <RobotModel.hpp>
+#include <RandomObject.hpp>
 
 #include <lcm/lcm-cpp.hpp>
 #include <robot_state_t.hpp>
@@ -210,6 +210,8 @@ int main(int /*argc*/, char *argv[]) {
 
     pangolin::Var<std::string> grasp_frame("grasp_frame");
 
+    pangolin::Var<std::string> object_repo("object_repo");
+
     pangolin::Var<std::string> opose_string("object_pose");
     pangolin::OpenGlMatrix object_pose;
     if(std::string(opose_string).size()>0) {
@@ -352,6 +354,8 @@ int main(int /*argc*/, char *argv[]) {
 
     // create file for timestamps
     std::ofstream joint_time(std::string(data_store_path)+"/time.csv");
+
+    RandomObject rand_obj(object_repo);
 
     ////////////////////////////////////////////////////////////////////////////
     /// Window Setup
@@ -586,6 +590,15 @@ int main(int /*argc*/, char *argv[]) {
 
         // update link/mesh poses
         robot.updateFrames();
+
+        // random object and pose in hand frame
+        if(rand_obj.hasObjects()) {
+            object_pose = rand_obj.getRandomPose(0.0);
+            const std::string rand_obj_path = rand_obj.getRandomObjectPath();
+            //std::cout << iframe << " " << op << std::endl;
+            obj = MeshLoader::getMesh(rand_obj_path);
+            obj->renderSetup();
+        }
 
         // show coordinate axis of exported frames
         for(const std::string& link : export_link_pose_names) {

@@ -7,7 +7,7 @@ project(RobotGraspRender)
 add_definitions(-std=c++17)
 
 # deactivate some warnings
-add_definitions ("-Wno-ignored-attributes -Wno-deprecated-declarations")
+add_definitions ("-Wno-ignored-attributes -Wno-deprecated-declarations -Wno-register")
 
 set(BUILD_SHARED_LIBS true)
 
@@ -62,6 +62,9 @@ target_link_libraries(robot_model orocos-kdl)
 target_link_libraries(robot_model ${urdfdom_LIBRARIES})
 target_link_libraries(robot_model kdl_parser)
 target_link_libraries(robot_model stdc++fs)
+
+add_library(random_object src/RandomObject.cpp)
+target_link_libraries(random_object stdc++fs)
 
 
 # define executable

@@ -906,8 +906,8 @@ int main(int /*argc*/, char *argv[]) {
                 (*pose_export_files[link_name]) << std::endl;
 
                 // 2D frame position in image plane
-                const double wx = centre_x + link_pose.p.x() * f_u;
-                const double wy = centre_y + link_pose.p.y() * f_v;
+                const double wx = centre_x + link_pose.p.x()/link_pose.p.z() * f_u;
+                const double wy = centre_y + link_pose.p.y()/link_pose.p.z() * f_v;
                 (*joint_pos_export_files[link_name]) << wx << " " << wy << std::endl;
             } // frame pose export
         }

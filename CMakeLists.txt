@@ -22,7 +22,7 @@ pkg_check_modules(assimp REQUIRED assimp)
 include_directories(${assimp_INCLUDE_DIRS})
 
 # KDL
-pkg_check_modules(orocos_kdl REQUIRED orocos_kdl)
+find_package(orocos_kdl REQUIRED)
 include_directories(${orocos_kdl_INCLUDE_DIRS})
 
 # URDF
@@ -58,7 +58,7 @@ add_library(kdl_parser src/kdl_parser.cpp)
 
 # represenation of articulated robot model
 add_library(robot_model src/RobotModel.cpp)
-target_link_libraries(robot_model orocos-kdl)
+target_link_libraries(robot_model ${orocos_kdl_LIBRARIES})
 target_link_libraries(robot_model ${urdfdom_LIBRARIES})
 target_link_libraries(robot_model kdl_parser)
 target_link_libraries(robot_model stdc++fs)

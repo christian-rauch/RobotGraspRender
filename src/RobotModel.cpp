@@ -7,6 +7,8 @@
 
 #include <kdl/chainfksolverpos_recursive.hpp>
 
+#include <GL/glew.h>
+
 #define PACKAGE_PATH_URI_SCHEME "package://"
 
 namespace fs = std::experimental::filesystem;
@@ -207,7 +209,16 @@ pangolin::OpenGlMatrix RobotModel::MatrixFromFrame(const KDL::Frame &frame_pose)
     return M;
 }
 
-void RobotModel::render(pangolin::GlSlProgram &shader, const bool link_colour) {
+void RobotModel::render(pangolin::GlSlProgram &shader, const bool link_colour, std::map<std::string, pangolin::Image<uint8_t>> *mesh_masks) {
+    // get viewport dimensions
+    int w,h;
+    if(mesh_masks!=NULL) {
+        GLint vp_dim[4];
+        glGetIntegerv(GL_VIEWPORT, vp_dim);
+        w = vp_dim[2];
+        h = vp_dim[3];
+    }
+
     // get pose of each link and render mesh
     for(auto it = link_meshes.begin(); it!=link_meshes.end(); it++) {
         const std::string link_name = it->first;
@@ -235,5 +246,19 @@ void RobotModel::render(pangolin::GlSlProgram &shader, const bool link_colour) {
         shader.Unbind();
 
         it->second->render(shader);
+
+        if(mesh_masks!=NULL) {
+            // render and export each link individually
+            glFlush();
+
+            pangolin::Image<uint8_t> buffer;
+            buffer.Alloc(w, h, w);
+            glReadBuffer(GL_BACK);
+            glPixelStorei(GL_PACK_ALIGNMENT, 1);
+            glReadPixels(0,0,w,h, GL_ALPHA, GL_UNSIGNED_BYTE, buffer.ptr );
+            (*mesh_masks)[link_name] = buffer;
+
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        }
     }
 }

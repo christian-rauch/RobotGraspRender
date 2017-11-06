@@ -69,7 +69,7 @@ public:
      * @param shader shader (texture, colour, ...)
      * @param link_colour true: use the original link colour, false: use label colour
      */
-    void render(pangolin::GlSlProgram &shader, const bool link_colour = true);
+    void render(pangolin::GlSlProgram &shader, const bool link_colour = true, std::map<std::string, pangolin::Image<uint8_t>> *mesh_masks = NULL);
 
     void addSkip(const std::string& link) { skipMeshes.insert(link); }
 

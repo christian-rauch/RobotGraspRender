@@ -326,6 +326,7 @@ int main(int /*argc*/, char *argv[]) {
         dir_names["depth"] = std::string(data_store_path)+"/depth/";
     if(export_label)
         dir_names["label"] = std::string(data_store_path)+"/label/";
+    dir_names["masks"] = std::string(data_store_path)+"/masks/";
 
     for(const auto& dir : dir_names) {
         if(!opendir(std::string(dir.second).c_str()) && (errno==ENOENT)) {
@@ -782,6 +783,41 @@ int main(int /*argc*/, char *argv[]) {
         label_shader.SetUniform("label_colour", pangolin::Colour::Green());
         label_shader.Unbind();
         obj->render(label_shader);
+
+        // off-screen rendering
+        if(store_img && export_label) {
+            glViewport(0,0,w,h);
+            fbo_buffer.Bind();
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            std::map<std::string, pangolin::Image<uint8_t>> masks;
+            if(save_robot) {
+                label_shader.Bind();
+                label_shader.SetUniform("label_colour", pangolin::Colour::Red());
+                label_shader.Unbind();
+                robot.addSkip("upperNeckPitchLink");
+                robot.render(label_shader, false, &masks);
+                robot.resetSkip();
+            }
+
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            obj->render(label_shader);
+
+            pangolin::Image<uint8_t> buffer;
+            buffer.Alloc(w, h, w);
+            glReadBuffer(GL_BACK);
+            glPixelStorei(GL_PACK_ALIGNMENT, 1);
+            glReadPixels(0,0,w,h, GL_ALPHA, GL_UNSIGNED_BYTE, buffer.ptr );
+            masks["object"] = buffer;
+
+            fbo_buffer.Unbind();
+
+            for(const auto& m : masks) {
+                pangolin::PixelFormat fmt_alpha = pangolin::PixelFormatFromString("GRAY8");
+                pangolin::SaveImage(m.second, fmt_alpha, dir_names["masks"]+"/label_"+std::to_string(iimg)+"_"+m.first+".png", false);
+            }
+        }
 
         // off-screen rendering
         if(store_img && (export_depth_viz || export_depth || export_label)) {

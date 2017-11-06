@@ -789,6 +789,10 @@ int main(int /*argc*/, char *argv[]) {
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+            label_shader.Bind();
+            label_shader.SetUniform("M", robot.T_wr*robot.getFramePoseMatrix(grasp_frame)*T_po);
+            label_shader.SetUniform("label_colour", pangolin::Colour::Green());
+            label_shader.Unbind();
             obj->render(label_shader);
 
             pangolin::Image<uint8_t> buffer;

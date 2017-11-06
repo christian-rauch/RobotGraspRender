@@ -251,12 +251,10 @@ void RobotModel::render(pangolin::GlSlProgram &shader, const bool link_colour, s
             // render and export each link individually
             glFlush();
 
-            pangolin::Image<uint8_t> buffer;
-            buffer.Alloc(w, h, w);
+            (*mesh_masks)[link_name].Alloc(w, h, w);
             glReadBuffer(GL_BACK);
             glPixelStorei(GL_PACK_ALIGNMENT, 1);
-            glReadPixels(0,0,w,h, GL_ALPHA, GL_UNSIGNED_BYTE, buffer.ptr );
-            (*mesh_masks)[link_name] = buffer;
+            glReadPixels(0,0,w,h, GL_ALPHA, GL_UNSIGNED_BYTE, (*mesh_masks)[link_name].ptr );
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }

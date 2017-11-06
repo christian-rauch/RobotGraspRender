@@ -780,14 +780,12 @@ int main(int /*argc*/, char *argv[]) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             std::map<std::string, pangolin::Image<uint8_t>> masks;
-            if(save_robot) {
-                label_shader.Bind();
-                label_shader.SetUniform("label_colour", pangolin::Colour::Red());
-                label_shader.Unbind();
-                robot.addSkip("upperNeckPitchLink");
-                robot.render(label_shader, false, &masks);
-                robot.resetSkip();
-            }
+            label_shader.Bind();
+            label_shader.SetUniform("label_colour", pangolin::Colour::Red());
+            label_shader.Unbind();
+            robot.addSkip("upperNeckPitchLink");
+            robot.render(label_shader, false, &masks);
+            robot.resetSkip();
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -802,9 +800,11 @@ int main(int /*argc*/, char *argv[]) {
 
             fbo_buffer.Unbind();
 
-            for(const auto& m : masks) {
+            for(auto& m : masks) {
                 pangolin::PixelFormat fmt_alpha = pangolin::PixelFormatFromString("GRAY8");
                 pangolin::SaveImage(m.second, fmt_alpha, export_dirs.at("masks") / ("label_"+std::to_string(iimg)+"_"+m.first+".png"), false);
+                // release memory
+                m.second.Dealloc();
             }
         }
 

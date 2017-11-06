@@ -13,9 +13,6 @@
 
 #include <ios>
 
-#include <dirent.h>
-#include <sys/stat.h>
-
 #include <experimental/filesystem>
 
 namespace fs = std::experimental::filesystem;
@@ -206,7 +203,7 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<std::string> env_path("environment_mesh");
     pangolin::Var<std::string> obj_path("object_mesh");
     pangolin::Var<std::string> robot_model_path("robot_model");
-    pangolin::Var<std::string> data_store_path("dest_dir");
+    const fs::path export_dir = pangolin::Var<std::string>("dest_dir").Get();
     pangolin::Var<uint> nframes("save_nframes");
     pangolin::Var<std::string> logfile("log_file");
     pangolin::Var<std::string> joint_conf_path("joint_config_path");
@@ -267,7 +264,7 @@ int main(int /*argc*/, char *argv[]) {
     std::cout<<"robot: "<<robot_model_path<<std::endl;
     std::cout<<"environment: "<<env_path<<std::endl;
     std::cout<<"object: "<<obj_path<<std::endl;
-    std::cout<<"save images every "<<nframes<<" frames to: "<<data_store_path<<std::endl;
+    std::cout<<"save images every "<<nframes<<" frames to: "<<export_dir<<std::endl;
 
     ////////////////////////////////////////////////////////////////////////////
     /// I/O Setup
@@ -316,33 +313,25 @@ int main(int /*argc*/, char *argv[]) {
     }
 
     // check and create target directories
-    // TODO: replace by C++17 filesystem
-    std::map<std::string, std::string> dir_names; // name, path
-    dir_names["0"] = data_store_path; // name "0" to create root first
+    std::map<std::string, fs::path> export_dirs; // name, path
     if(export_colour)
-        dir_names["colour"] = std::string(data_store_path)+"/colour/";
+        export_dirs["colour"] = export_dir / "colour";
     if(export_depth_viz)
-        dir_names["depth_viz"] = std::string(data_store_path)+"/depth_viz/";
+        export_dirs["depth_viz"] = export_dir / "depth_viz";
     if(export_depth)
-        dir_names["depth"] = std::string(data_store_path)+"/depth/";
+        export_dirs["depth"] = export_dir / "depth";
     if(export_label)
-        dir_names["label"] = std::string(data_store_path)+"/label/";
+        export_dirs["label"] = export_dir / "label";
     if(export_part_masks)
-        dir_names["masks"] = std::string(data_store_path)+"/masks/";
+        export_dirs["masks"] = export_dir / "masks";
+    export_dirs["joint_pos"] = export_dir / "joint_pos";
 
-    for(const auto& dir : dir_names) {
-        if(!opendir(std::string(dir.second).c_str()) && (errno==ENOENT)) {
-            // directory does not exist
-            std::cout<<"creating new directory: "<<std::string(dir.second)<<std::endl;
-            // S_IRWXU: read+write by owner
-            // S_IRWXG: read+write by group
-            // S_IROTH: read only by others
-            mkdir(std::string(dir.second).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        }
+    for(const auto& dir : export_dirs) {
+        fs::create_directories(dir.second);
     }
 
     // create file for timestamps
-    std::ofstream joint_time(std::string(data_store_path)+"/time.csv");
+    std::ofstream joint_time(export_dir / "time.csv");
 
     RandomObject rand_obj(object_repo);
 
@@ -414,7 +403,7 @@ int main(int /*argc*/, char *argv[]) {
     if(robot.link_label_colours.size()!=robot.link_label_id.size())
         throw std::runtime_error("link label and colour size mismatch");
 
-    std::ofstream link_label_file(std::string(data_store_path)+"/link_label.csv");
+    std::ofstream link_label_file(export_dir / "link_label.csv");
     //link_label_file << "name id r g b"<<std::endl;
     for(auto it = robot.link_meshes.begin(); it!=robot.link_meshes.end(); it++) {
         const std::string link_name = it->first;
@@ -445,7 +434,7 @@ int main(int /*argc*/, char *argv[]) {
     }
 
     // create files for pose export and write header
-    const fs::path pose_path = fs::path(data_store_path.Get())/fs::path("frame_pose");
+    const fs::path pose_path = export_dir / "frame_pose";
     fs::create_directories(pose_path);
     std::map<std::string, std::shared_ptr<std::ofstream>> pose_export_files;
     for(const std::string& link : export_link_pose_names) {
@@ -454,11 +443,9 @@ int main(int /*argc*/, char *argv[]) {
     }
 
     // create files for joint 2D position export and write header
-    const fs::path joint_pos_path = fs::path(data_store_path.Get())/fs::path("joint_pos");
-    fs::create_directories(joint_pos_path);
     std::map<std::string, std::shared_ptr<std::ofstream>> joint_pos_export_files;
     for(const std::string& link : export_link_pose_names) {
-        joint_pos_export_files[link] = std::make_shared<std::ofstream>(joint_pos_path/fs::path(link+"_2Dpos.csv"));
+        joint_pos_export_files[link] = std::make_shared<std::ofstream>(export_dirs.at("joint_pos") / (link+"_2Dpos.csv"));
         (*joint_pos_export_files[link]) << "x y" << std::endl;
     }
 
@@ -744,7 +731,7 @@ int main(int /*argc*/, char *argv[]) {
             glReadBuffer(GL_BACK);
             glPixelStorei(GL_PACK_ALIGNMENT, 1);
             glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
-            pangolin::SaveImage(buffer, fmt, dir_names["colour"]+"/colour_"+std::to_string(iimg)+".png", false);
+            pangolin::SaveImage(buffer, fmt, export_dirs.at("colour") / ("colour_"+std::to_string(iimg)+".png"), false);
             buffer.Dealloc();
 
             // deactivate frame buffer
@@ -817,7 +804,7 @@ int main(int /*argc*/, char *argv[]) {
 
             for(const auto& m : masks) {
                 pangolin::PixelFormat fmt_alpha = pangolin::PixelFormatFromString("GRAY8");
-                pangolin::SaveImage(m.second, fmt_alpha, dir_names["masks"]+"/label_"+std::to_string(iimg)+"_"+m.first+".png", false);
+                pangolin::SaveImage(m.second, fmt_alpha, export_dirs.at("masks") / ("label_"+std::to_string(iimg)+"_"+m.first+".png"), false);
             }
         }
 
@@ -874,7 +861,7 @@ int main(int /*argc*/, char *argv[]) {
                 glReadBuffer(GL_BACK);
                 glPixelStorei(GL_PACK_ALIGNMENT, 1);
                 glReadPixels(0,0,w,h, GL_RGB, GL_UNSIGNED_BYTE, buffer.ptr );
-                pangolin::SaveImage(buffer, fmt, dir_names["label"]+"/label_"+std::to_string(iimg)+".png", false);
+                pangolin::SaveImage(buffer, fmt, export_dirs.at("label") / ("label_"+std::to_string(iimg)+".png"), false);
                 buffer.Dealloc();
             }
 
@@ -897,7 +884,7 @@ int main(int /*argc*/, char *argv[]) {
                     pangolin::PixelFormat depth_fmt = pangolin::PixelFormatFromString("GRAY8");
                     depth_img_vis.Alloc(w, h, w * depth_fmt.bpp/8 );
                     memcpy(depth_img_vis.ptr, depth_data_vis.data(), sizeof(uint8_t)*w*h);
-                    pangolin::SaveImage(depth_img_vis, depth_fmt, dir_names["depth_viz"]+"/depth_viz_"+std::to_string(iimg)+".png", false);
+                    pangolin::SaveImage(depth_img_vis, depth_fmt, export_dirs.at("depth_viz")  / ("depth_viz_"+std::to_string(iimg)+".png"), false);
                     depth_img_vis.Dealloc();
                 }
 
@@ -906,7 +893,7 @@ int main(int /*argc*/, char *argv[]) {
                     cv::Mat depth_img(h, w, CV_16UC1, depth_data_mm.data());
                     // flip around x-axis, origin from top left to bottom left
                     cv::flip(depth_img, depth_img, 0);
-                    cv::imwrite(dir_names["depth"]+"/depth_"+std::to_string(iimg)+".png", depth_img);
+                    cv::imwrite(export_dirs.at("depth") / ("depth_"+std::to_string(iimg)+".png"), depth_img);
                 }
             }
 

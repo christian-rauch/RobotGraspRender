@@ -199,21 +199,21 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::ParseVarsFile(argv[1]);
 
     // data source parameters
-    pangolin::Var<std::string> lcm_channel("lcm_channel");
-    pangolin::Var<std::string> env_path("environment_mesh");
-    pangolin::Var<std::string> obj_path("object_mesh");
-    pangolin::Var<std::string> robot_model_path("robot_model");
+    const pangolin::Var<std::string> lcm_channel("lcm_channel");
+    const pangolin::Var<std::string> env_path("environment_mesh");
+    const pangolin::Var<std::string> obj_path("object_mesh");
+    const pangolin::Var<std::string> robot_model_path("robot_model");
     const fs::path export_dir = pangolin::Var<std::string>("dest_dir").Get();
-    pangolin::Var<uint> nframes("save_nframes");
-    pangolin::Var<std::string> logfile("log_file");
-    pangolin::Var<std::string> joint_conf_path("joint_config_path");
-    pangolin::Var<std::string> timestamps_path("timestamps_path");
+    const pangolin::Var<uint> nframes("save_nframes");
+    const pangolin::Var<std::string> logfile("log_file");
+    const pangolin::Var<std::string> joint_conf_path("joint_config_path");
+    const pangolin::Var<std::string> timestamps_path("timestamps_path");
 
-    pangolin::Var<std::string> grasp_frame("grasp_frame");
+    const pangolin::Var<std::string> grasp_frame("grasp_frame");
 
-    pangolin::Var<std::string> object_repo("object_repo");
+    const pangolin::Var<std::string> object_repo("object_repo");
 
-    pangolin::Var<std::string> opose_string("object_pose");
+    const pangolin::Var<std::string> opose_string("object_pose");
     pangolin::OpenGlMatrix object_pose;
     if(std::string(opose_string).size()>0) {
         Eigen::MatrixXf mx;
@@ -226,14 +226,14 @@ int main(int /*argc*/, char *argv[]) {
     }
 
     // camera parameters
-    pangolin::Var<std::string> camera_frame("camera_frame");
-    pangolin::Var<uint> cam_width("width");
-    pangolin::Var<uint> cam_height("height");
-    pangolin::Var<uint> centre_x("centre_x");
-    pangolin::Var<uint> centre_y("centre_y");
-    pangolin::Var<double> f_u("f_u");
-    pangolin::Var<double> f_v("f_v");
-    pangolin::Var<double> rotate_z_rad("rotate_z_rad");
+    const pangolin::Var<std::string> camera_frame("camera_frame");
+    const pangolin::Var<uint> cam_width("width");
+    const pangolin::Var<uint> cam_height("height");
+    const pangolin::Var<uint> centre_x("centre_x");
+    const pangolin::Var<uint> centre_y("centre_y");
+    const pangolin::Var<double> f_u("f_u");
+    const pangolin::Var<double> f_v("f_v");
+    const pangolin::Var<double> rotate_z_rad("rotate_z_rad");
 
     const pangolin::Var<std::string> cpose_string("camera_pose");
     pangolin::OpenGlMatrix camera_pose;
@@ -247,23 +247,23 @@ int main(int /*argc*/, char *argv[]) {
     }
 
     // export flags
-    pangolin::Var<bool> save_background("save_background");
-    pangolin::Var<bool> save_object("save_object");
-    pangolin::Var<bool> save_robot("save_robot");
+    const pangolin::Var<bool> save_background("save_background");
+    const pangolin::Var<bool> save_object("save_object");
+    const pangolin::Var<bool> save_robot("save_robot");
 
-    pangolin::Var<bool> export_colour("export_colour");
-    pangolin::Var<bool> export_depth_viz("export_depth_viz");
-    pangolin::Var<bool> export_depth("export_depth");
-    pangolin::Var<bool> export_label("export_label");
-    pangolin::Var<bool> export_part_masks("export_part_masks");
-    pangolin::Var<bool> label_gray("label_gray");
+    const pangolin::Var<bool> export_colour("export_colour");
+    const pangolin::Var<bool> export_depth_viz("export_depth_viz");
+    const pangolin::Var<bool> export_depth("export_depth");
+    const pangolin::Var<bool> export_label("export_label");
+    const pangolin::Var<bool> export_part_masks("export_part_masks");
+    const pangolin::Var<bool> label_gray("label_gray");
 
-    pangolin::Var<std::string> export_link_poses("export_link_poses");
+    const pangolin::Var<std::string> export_link_poses("export_link_poses");
 
-    std::cout<<"channel: "<<lcm_channel<<std::endl;
-    std::cout<<"robot: "<<robot_model_path<<std::endl;
-    std::cout<<"environment: "<<env_path<<std::endl;
-    std::cout<<"object: "<<obj_path<<std::endl;
+    std::cout<<"channel: "<<lcm_channel.Get()<<std::endl;
+    std::cout<<"robot: "<<robot_model_path.Get()<<std::endl;
+    std::cout<<"environment: "<<env_path.Get()<<std::endl;
+    std::cout<<"object: "<<obj_path.Get()<<std::endl;
     std::cout<<"save images every "<<nframes<<" frames to: "<<export_dir<<std::endl;
 
     ////////////////////////////////////////////////////////////////////////////
@@ -280,7 +280,7 @@ int main(int /*argc*/, char *argv[]) {
 
     if(!std::string(joint_conf_path).empty()) {
         // read joints values from csv and quit at end-of-file
-        std::cout<<"reading joint config from: "<<joint_conf_path<<std::endl;
+        std::cout<<"reading joint config from: "<<joint_conf_path.Get()<<std::endl;
         if(!csvj.open(joint_conf_path, timestamps_path))
             std::cerr<<"could not open files"<<std::endl;
         csvj.setJointNames();
@@ -289,7 +289,7 @@ int main(int /*argc*/, char *argv[]) {
         // use LCM as joint value provider
         if(!std::string(logfile).empty()) {
             // read from LCM logfile
-            std::cout<<"reading from log file: "<<logfile<<std::endl;
+            std::cout<<"reading from log file: "<<logfile.Get()<<std::endl;
             log = new lcm::LogFile(std::string(logfile), "r");
             if(!log->good()) {
                 std::cerr << "error: reading log file" << std::endl;
@@ -389,7 +389,7 @@ int main(int /*argc*/, char *argv[]) {
 
     // robot
     RobotModel robot;
-    if(!robot_model_path->empty()) {
+    if(!robot_model_path.Get().empty()) {
         robot.parseURDF(robot_model_path);
         // load meshes and set unique colour
         robot.loadLinkMeshes();
@@ -452,7 +452,7 @@ int main(int /*argc*/, char *argv[]) {
 
     // meshes
     MeshPtr env;
-    if(env_path->empty()) {
+    if(env_path.Get().empty()) {
         env = std::unique_ptr<Mesh>(new Mesh());
     }
     else {
@@ -462,7 +462,7 @@ int main(int /*argc*/, char *argv[]) {
 //    std::cout<<"env faces: "<<env->faces.size()<<std::endl;
 
     MeshPtr obj;
-    if(obj_path->empty()) {
+    if(obj_path.Get().empty()) {
         obj = std::unique_ptr<Mesh>(new Mesh());
     }
     else {

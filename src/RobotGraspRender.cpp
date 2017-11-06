@@ -258,6 +258,7 @@ int main(int /*argc*/, char *argv[]) {
     pangolin::Var<bool> export_depth_viz("export_depth_viz");
     pangolin::Var<bool> export_depth("export_depth");
     pangolin::Var<bool> export_label("export_label");
+    pangolin::Var<bool> export_part_masks("export_part_masks");
     pangolin::Var<bool> label_gray("label_gray");
 
     pangolin::Var<std::string> export_link_poses("export_link_poses");
@@ -326,7 +327,8 @@ int main(int /*argc*/, char *argv[]) {
         dir_names["depth"] = std::string(data_store_path)+"/depth/";
     if(export_label)
         dir_names["label"] = std::string(data_store_path)+"/label/";
-    dir_names["masks"] = std::string(data_store_path)+"/masks/";
+    if(export_part_masks)
+        dir_names["masks"] = std::string(data_store_path)+"/masks/";
 
     for(const auto& dir : dir_names) {
         if(!opendir(std::string(dir.second).c_str()) && (errno==ENOENT)) {
@@ -785,7 +787,7 @@ int main(int /*argc*/, char *argv[]) {
         obj->render(label_shader);
 
         // off-screen rendering
-        if(store_img && export_label) {
+        if(store_img && export_part_masks) {
             glViewport(0,0,w,h);
             fbo_buffer.Bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

@@ -14,17 +14,16 @@ RandomObject::RandomObject(const std::string obj_repo) : object_repo(obj_repo) {
     }
 }
 
-Eigen::Matrix4d RandomObject::getRandomPose(const double max_transl, const double scale) {
+Eigen::Affine3d RandomObject::getRandomPose(const double max_transl, const double scale) {
     std::uniform_real_distribution<double> unif_angle(0.0, M_PI);
 
     const Eigen::AngleAxisd aa(unif_angle(generator), Eigen::Vector3d::Random().normalized());
-    //Eigen::Isometry3d pose;
     Eigen::Affine3d pose;
     pose.setIdentity();
     pose.linear() = aa.toRotationMatrix();
     pose.translation() = Eigen::Vector3d::Random()*max_transl;
     pose.scale(scale);
-    return pose.matrix();
+    return pose;
 }
 
 std::string RandomObject::getRandomObjectPath() {

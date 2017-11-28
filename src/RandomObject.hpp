@@ -13,7 +13,7 @@ class RandomObject {
 public:
     RandomObject(const std::string obj_repo);
 
-    Eigen::Matrix4d getRandomPose(const double max_transl = 0, const double scale = 1);
+    Eigen::Affine3d getRandomPose(const double max_transl = 0, const double scale = 1);
 
     std::string getRandomObjectPath();
 

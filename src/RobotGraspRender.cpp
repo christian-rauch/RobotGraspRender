@@ -224,6 +224,7 @@ int main(int /*argc*/, char *argv[]) {
     else {
         object_pose.SetIdentity();
     }
+    const pangolin::Var<bool> object_occlusion("object_occlusion");
 
     // camera parameters
     const pangolin::Var<std::string> camera_frame("camera_frame");
@@ -610,6 +611,17 @@ int main(int /*argc*/, char *argv[]) {
             //std::cout << iframe << " " << op << std::endl;
             obj = MeshLoader::getMesh(rand_obj_path);
             obj->renderSetup();
+        }
+        if(object_occlusion) {
+            // render object in the line of sight to grasp frame
+            object_pose = rand_obj.getRandomPose(0.1); // T_po
+            const Eigen::Affine3d T_wp(robot.T_wr*robot.getFramePoseMatrix(grasp_frame));
+            // palm pose in camera frame
+            const Eigen::Affine3d T_cp(camera_pose.Inverse() * T_wp);
+            // target object position in camera frame
+            Eigen::Affine3d T_co = T_cp * Eigen::Affine3d(object_pose);
+            T_co.translation() *= 1-0.2;
+            object_pose = T_wp.inverse() * Eigen::Affine3d(camera_pose) * T_co;
         }
 
         // show coordinate axis of exported frames
